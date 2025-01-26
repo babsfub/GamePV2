@@ -1,0 +1,539 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* ============================================
+   Base Styles & Variables
+============================================ */
+:root {
+  --max-width-game: 1440px;
+  --spacing-game: 2rem;
+  --spacing-screen-safe: 1rem;
+  
+  /* Colors */
+  --color-primary: rgb(79, 70, 229);
+  --color-secondary: rgb(16, 185, 129);
+  --color-accent: rgb(236, 72, 153);
+  --color-background: rgb(15 23 42);
+  --color-surface: rgb(31 41 55);
+  --color-text: rgb(248 250 252);
+  --color-text-secondary: rgb(156 163 175);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --spacing-screen-safe: 2rem;
+  }
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+/* ============================================
+   Common Components
+============================================ */
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  font-weight: 500;
+  transition: all 200ms;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background-image: linear-gradient(to right, var(--color-accent), var(--color-secondary));
+  color: white;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+.btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Game Selector */
+.game-selector {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.game-selector-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  font-weight: 500;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: none;
+  cursor: pointer;
+  transition: all 200ms;
+}
+
+.game-selector-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+}
+
+.game-selector-button.active {
+  background: linear-gradient(to right, var(--color-primary), var(--color-secondary));
+  color: white;
+}
+
+/* Cards */
+.game-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  background-color: rgba(31, 41, 55, 0.5);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: transform 0.3s ease;
+}
+
+.game-card:hover {
+  transform: scale(1.02);
+}
+
+.game-card-content {
+  position: relative;
+  padding: 2rem;
+}
+
+.game-card-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  background-color: rgba(79, 70, 229, 0.2);
+  -webkit-backdrop-filter: blur(4px); 
+  backdrop-filter: blur(4px);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* ============================================
+   Leaderboard Specific Styles
+============================================ */
+.leaderboard-content {
+  background: var(--color-surface);
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.leaderboard-header {
+  margin-bottom: 1.5rem;
+}
+
+.leaderboard-header h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.leaderboard-info-bar {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.leaderboard-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.leaderboard-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.leaderboard-label {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.leaderboard-value {
+  color: var(--color-text);
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.leaderboard-value-prize {
+  color: var(--color-secondary);
+}
+
+/* Table Styles */
+.leaderboard-table-container {
+  overflow-x: auto;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.leaderboard-table th {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+}
+
+.leaderboard-table td {
+  color: var(--color-text);
+}
+
+.leaderboard-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Status Indicators */
+.leaderboard-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.leaderboard-status.verified {
+  background: var(--color-secondary);
+  color: white;
+}
+
+/* ============================================
+   Utilities & Animations
+============================================ */
+.text-gradient {
+  background: linear-gradient(to right, var(--color-primary), var(--color-secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.bg-glass {
+  background-color: rgba(31, 41, 55, 0.5);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-in forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.slide-up {
+  animation: slideUp 0.5s ease-out forwards;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   Responsive Design
+============================================ */
+@media (max-width: 768px) {
+  .leaderboard-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .game-selector {
+    flex-direction: column;
+  }
+
+  .game-card {
+    margin-bottom: 1rem;
+  }
+
+  .leaderboard-table-container {
+    margin: 0 -1rem;
+    padding: 0 1rem;
+  }
+}
+/* ============================================
+   Game Components & Layout
+============================================ */
+
+/* Game Container & Layout */
+.game-container {
+  display: grid;
+  grid-template-columns: 300px minmax(auto, 800px) 300px;
+  gap: 2rem;
+  margin: 0 auto;
+  max-width: var(--max-width-game);
+  padding: 2rem var(--spacing-screen-safe);
+}
+
+.game-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Game Arena */
+.game-arena {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  min-height: 700px;
+}
+
+.game-canvas-wrapper {
+  position: relative;
+  background: #1a1a1a;
+  padding: 4px;
+}
+
+.game-canvas-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    45deg,
+    var(--color-primary),
+    var(--color-secondary),
+    var(--color-accent),
+    var(--color-primary)
+  );
+  z-index: -1;
+  animation: borderPulse 5s ease infinite;
+  pointer-events: none;
+}
+
+.game-canvas {
+  position: relative;
+  z-index: 1;
+  display: block;
+  background: #1a1a1a;
+}
+
+/* Game Information Panel */
+.game-panel {
+  background: var(--color-surface);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  color: var(--color-text);
+}
+
+.game-panel-header {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.game-panel-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Game Stats */
+.game-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.game-stat-item {
+  text-align: center;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 0.5rem;
+}
+
+.game-stat-label {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.game-stat-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Game Controls */
+.game-controls {
+  margin-top: 1.5rem;
+}
+
+.game-controls-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.game-controls-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 0.5rem;
+  color: var(--color-text-secondary);
+}
+
+.game-controls-key {
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0.25rem;
+  font-family: monospace;
+  color: var(--color-text);
+}
+
+/* Game specific sizes */
+.game-size-tetris .game-canvas {
+  width: 300px;
+  height: 600px;
+}
+
+.game-size-snake .game-canvas {
+  width: 400px;
+  height: 400px;
+}
+
+/* Game overlays */
+.game-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.85);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+}
+
+.game-overlay-content {
+  background: var(--color-surface);
+  padding: 2rem;
+  border-radius: 1rem;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+}
+
+.game-overlay-title {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: var(--color-text);
+}
+
+/* Animations */
+@keyframes borderPulse {
+  0%, 100% {
+    opacity: 1;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    opacity: 0.6;
+    filter: hue-rotate(180deg);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 1400px) {
+  .game-container {
+    grid-template-columns: 250px minmax(auto, 800px) 250px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .game-container {
+    grid-template-columns: 1fr;
+  }
+
+  .game-sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .game-panel {
+    flex: 1;
+    min-width: 300px;
+  }
+}
+
+@media (max-width: 640px) {
+  .game-container {
+    padding: 1rem;
+  }
+
+  .game-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .game-panel {
+    min-width: 100%;
+  }
+}
