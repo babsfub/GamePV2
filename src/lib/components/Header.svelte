@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import Connect from '$lib/components/wallet/Connect.svelte';
   import { onMount } from 'svelte';
   import { getWalletClient } from '$lib/config/contract.js';
+  import { tetrisGameState } from '$lib/stores/tetris.js';
 
   let { isAdmin = false } = $props<{ isAdmin?: boolean }>();
 
@@ -10,11 +11,22 @@
   let isMenuOpen = $state(false);
   let mounted = $state(false);
 
-  let navContentClass = $derived(isMenuOpen ? 'nav-content active' : 'nav-content');
+  // Computed values
+  let navContentClass = $derived(
+    isMenuOpen ? 'nav-content active' : 'nav-content'
+  );
 
+  let isTetrisPage = $derived(
+    page.url.pathname === '/games/tetris'
+  );
+
+  
+  let scoreClass = $derived(
+    $tetrisGameState.isGameOver ? 'score-display' : 'score-display active'
+  );
 
   function isActive(path: string): boolean {
-    return $page.url.pathname === path;
+    return page.url.pathname === path;
   }
 
   function toggleMenu() {
@@ -52,6 +64,24 @@
     <div class="nav-brand">
       <a href="/" class="logo" class:active={isActive('/')}>Retro Gaming</a>
       
+      <!-- Score Display -->
+      {#if isTetrisPage}
+  <div class={scoreClass}>
+    <div class="score-item">
+      <span class="score-label">Score</span>
+      <span class="score-value">{$tetrisGameState.score}</span>
+    </div>
+    <div class="score-item">
+      <span class="score-label">Level</span>
+      <span class="score-value">{$tetrisGameState.level}</span>
+    </div>
+    <div class="score-item">
+      <span class="score-label">Lines</span>
+      <span class="score-value">{$tetrisGameState.lines}</span>
+    </div>
+  </div>
+{/if}
+      
       <button 
         class="menu-toggle" 
         aria-label="Toggle menu"
@@ -80,8 +110,13 @@
         >
           Tetris
         </a>
-        <a href="/profile" class:active={isActive('/profile')} onclick={handleNavClick}>
-          Profile </a>
+        <a 
+          href="/profile" 
+          class:active={isActive('/profile')} 
+          onclick={handleNavClick}
+        >
+          Profile 
+        </a>
           
         {#if isAdmin}
           <a 
@@ -104,9 +139,7 @@
 </header>
 
 
-
 <style>
-  /* Les styles restent les mêmes que dans le layout */
   .header {
     position: sticky;
     top: 0;
@@ -114,6 +147,7 @@
     background: var(--color-surface);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
+
   .nav {
     max-width: var(--max-width-game);
     margin: 0 auto;
@@ -180,6 +214,38 @@
     color: var(--color-primary);
     background: rgba(var(--color-primary-rgb), 0.1);
   }
+
+  .score-display {
+    display: none;
+    gap: 1rem;
+    margin-left: 1rem;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 0.5rem;
+  }
+
+  .score-display.active {
+    display: flex;
+  }
+
+  .score-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 4rem;
+  }
+
+  .score-label {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+
+  .score-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
   @media (max-width: 768px) {
     .nav {
       height: auto;
@@ -212,7 +278,6 @@
       padding-top: 1rem;
     }
 
-
     .nav-links {
       flex-direction: column;
       width: 100%;
@@ -232,6 +297,15 @@
       padding-top: 0.5rem;
       border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
-  }
 
+    .score-display {
+      position: fixed;
+      top: 0.5rem;
+      right: 0.5rem;
+      margin: 0;
+      background: var(--color-surface);
+      z-index: 51;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  }
 </style>

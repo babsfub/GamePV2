@@ -11,6 +11,7 @@
     import Validate from '$lib/components/admin/validate.svelte';
     import type { TetrisState } from '$lib/types/tetris.js';
     import { Buffer } from 'buffer';
+    import { tetrisGameState } from '$lib/stores/tetris.js';
     
 
 
@@ -148,6 +149,13 @@
                     score = state.score;
                     level = state.level;
                     lines = state.lines;
+                    tetrisGameState.update(currentState => {
+                        currentState.score = state.score;
+                        currentState.level = state.level;
+                        currentState.lines = state.lines;
+                        currentState.isGameOver = true;
+                        return currentState;
+                    });
                     // Arrêt du jeu
                     if (engine) {
                         engine.update(Date.now());
@@ -158,6 +166,13 @@
                     lines = state.lines;
                     isPaused = state.is_paused;
                     isGameOver = state.is_game_over;
+                    tetrisGameState.update(currentState => {
+                        currentState.score = state.score;
+                        currentState.level = state.level;
+                        currentState.lines = state.lines;
+                        currentState.isGameOver = false;
+                        return currentState;
+                    });
                 }
                 render();
             }
@@ -443,6 +458,7 @@ function handleTouch(action: string) {
             window.removeEventListener('keydown', handleKeydown);
             window.removeEventListener('keyup', handleKeyup);
         }
+        
     });
 </script>
 
