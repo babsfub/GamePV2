@@ -1,10 +1,9 @@
 <!-- src/lib/components/admin/ConfigForm.svelte -->
 <script lang="ts">
-  import { onMount } from 'svelte'
   import { parseEther, formatEther } from 'viem'
   import { contractActions } from '$lib/contracts/actions.js'
   import type { Address } from 'viem'
-  import type { GameConfig } from '$lib/contracts/types.js'
+
 
   // Props
   let { account } = $props<{ account: Address }>()

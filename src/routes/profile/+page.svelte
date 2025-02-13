@@ -1,143 +1,126 @@
 <script lang='ts'>
-    import { page } from '$app/state'; 
-    import { onMount } from 'svelte';
-    import { wallet } from '$lib/stores/wallet.js';
+    import { getWalletState } from '$lib/state/wallet.svelte.js';
+    import { getUIState } from '$lib/state/ui.svelte.js';
     import { readContract, writeContract } from '$lib/contracts/actions.js';
     import { formatEther } from 'viem';
-    import { addToast } from '$lib/stores/toasts.js';
-    import type { Score } from '$lib/contracts/types';
+    import type { Score } from '$lib/types.js';
 
-    // Interface pour les scores étendus avec les infos de round et jeu
+    // États globaux
+    const walletState = getWalletState();
+    const uiState = getUIState();
+
+    // Interface pour les scores étendus
     interface ExtendedScore extends Score {
         roundId: bigint;
         game: string;
         rewardsDistributed: boolean;
     }
 
-    // États réactifs avec $state
+    // États locaux
     let playerScores = $state<ExtendedScore[]>([]);
     let pendingWithdrawals = $state<bigint>(0n);
     let isLoading = $state(false);
     let isWithdrawing = $state(false);
 
-    // État dérivé pour le statut de connexion
-    let isConnected = $derived(Boolean($wallet.address));
+    // États dérivés
+    let isConnected = $derived(Boolean(walletState.address));
     
     // Liste des jeux disponibles
-    const gamesList = ['snake', 'tetris'];
+    const gamesList = ['snake', 'tetris'] as const;
 
     async function loadPlayerData() {
-    if (!isConnected || !$wallet.address) return;
-    
-    try {
-        isLoading = true;
-        const allScores: ExtendedScore[] = [];
+        if (!isConnected || !walletState.address) return;
         
-        for (const game of gamesList) {
-            try {
-                // Vérifier d'abord la configuration du jeu
-                const gameConfig = await readContract.getGameConfig(game);
-                
-                if (!gameConfig.active) {
-                    console.log(`Game ${game} is not active, skipping...`);
-                    continue;
-                }
+        try {
+            isLoading = true;
+            const allScores: ExtendedScore[] = [];
+            
+            for (const game of gamesList) {
+                try {
+                    const gameConfig = await readContract.getGameConfig(game);
+                    
+                    if (!gameConfig.active) {
+                        console.log(`Game ${game} is not active, skipping...`);
+                        continue;
+                    }
 
-                const currentRoundId = gameConfig.currentRound; // Utiliser le round de la config
-                console.log(`Loading scores for ${game}, current round: ${currentRoundId}`);
-                
-                // Ne chercher que les rounds qui existent
-                for (let roundId = currentRoundId; roundId > 0n; roundId--) {
-                    try {
-                        const roundData = await readContract.getRoundData(roundId, game);
-                        
-                        // Vérifier que le round a des scores
-                        if (!roundData.scores || roundData.scores.length === 0) {
+                    const currentRoundId = gameConfig.currentRound;
+                    console.log(`Loading scores for ${game}, current round: ${currentRoundId}`);
+                    
+                    // Parcourir les rounds
+                    for (let roundId = currentRoundId; roundId > 0n; roundId--) {
+                        try {
+                            const roundData = await readContract.getRoundData(roundId, game);
+                            
+                            if (!roundData.scores || roundData.scores.length === 0) {
+                                continue;
+                            }
+                            
+                            const playerRoundScores = roundData.scores.filter(
+                                score => score.player.toLowerCase() === walletState.address!.toLowerCase()
+                            );
+                            
+                            if (playerRoundScores.length > 0) {
+                                allScores.push(...playerRoundScores.map(score => ({
+                                    ...score,
+                                    roundId,
+                                    game,
+                                    rewardsDistributed: roundData.basic.rewardsDistributed
+                                })));
+                            }
+                        } catch (roundError) {
+                            console.log(`Skipping round ${roundId} for ${game}`);
                             continue;
                         }
-                        
-                        const playerRoundScores = roundData.scores.filter(
-                            score => score.player.toLowerCase() === $wallet.address!.toLowerCase()
-                        );
-                        
-                        if (playerRoundScores.length > 0) {
-                            allScores.push(...playerRoundScores.map(score => ({
-                                ...score,
-                                roundId,
-                                game,
-                                rewardsDistributed: roundData.basic.rewardsDistributed
-                            })));
-                        }
-                    } catch (roundError) {
-                        console.log(`Skipping round ${roundId} for ${game}: ${roundError.message}`);
-                        continue; // Passer au round suivant si celui-ci échoue
                     }
+                } catch (gameError) {
+                    console.log(`Error loading game ${game}`);
+                    continue;
                 }
-            } catch (gameError) {
-                console.log(`Error loading game ${game}: ${gameError.message}`);
-                continue; // Passer au jeu suivant si celui-ci échoue
             }
+            
+            // Mise à jour des scores
+            playerScores = allScores.sort((a, b) => Number(b.roundId - a.roundId));
+            
+            if (walletState.address) {
+                pendingWithdrawals = await readContract.getPendingWithdrawals(walletState.address);
+            }
+            
+        } catch (error) {
+            console.error('Error loading player data:', error);
+            uiState.error('Failed to load profile data');
+        } finally {
+            isLoading = false;
         }
-        
-        // Trier les scores par date décroissante
-        playerScores = allScores.sort((a, b) => {
-            return Number(b.roundId - a.roundId);
-        });
-        
-        if ($wallet.address) {
-            pendingWithdrawals = await readContract.getPendingWithdrawals($wallet.address);
-        }
-        
-    } catch (error) {
-        console.error('Error loading player data:', error);
-        addToast({
-            type: 'error',
-            message: 'Failed to load some profile data'
-        });
-    } finally {
-        isLoading = false;
     }
-}
 
     async function handleWithdraw() {
-        if (!isConnected || !$wallet.address || pendingWithdrawals === 0n) return;
+        if (!isConnected || !walletState.address || pendingWithdrawals === 0n) return;
         
         try {
             isWithdrawing = true;
-            await writeContract.withdraw($wallet.address);
+            await writeContract.withdraw(walletState.address);
             
-            addToast({
-                type: 'success',
-                message: 'Successfully withdrawn rewards'
-            });
-            
+            uiState.addToast('success', 'Successfully withdrawn rewards');
             await loadPlayerData();
             
         } catch (error) {
             console.error('Withdrawal error:', error);
-            addToast({
-                type: 'error',
-                message: 'Failed to withdraw rewards'
-            });
+            uiState.error('Failed to withdraw rewards');
         } finally {
             isWithdrawing = false;
         }
     }
 
-    // Initialisation
-    onMount(() => {
-        if (isConnected) {
-            loadPlayerData();
-        }
-    });
-
-    // Effect pour recharger quand le wallet change
+    // Effet pour charger les données
     $effect(() => {
         if (isConnected) {
             loadPlayerData();
         }
     });
 </script>
+
+<!-- Le template reste le même -->
 
 <div class="profile-container">
     <div class="header">

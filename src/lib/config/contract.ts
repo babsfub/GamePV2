@@ -42,7 +42,6 @@ export const CONTRACT_CONFIG = {
   }
 } as const
 
-// Configuration des transports avec fallback
 const transports = [
   webSocket('wss://polygon.drpc.org', {
     reconnect: { attempts: 5, delay: 1000 },
@@ -51,7 +50,6 @@ const transports = [
   http('https://polygon.meowrpc.com')
 ]
 
-// Client public avec fallback
 export const publicClient = createPublicClient({
   chain: polygon,
   transport: fallback(transports),
@@ -60,7 +58,6 @@ export const publicClient = createPublicClient({
 
 // Événements du contrat
 export const contractEvents = {
-  // Changement de statut vérificateur
   watchVerifierStatus(address: `0x${string}`, onStatusChange: (status: boolean) => void) {
     return publicClient.watchContractEvent({
       address: RETRO_GAMING_ADDRESS,
@@ -78,7 +75,6 @@ export const contractEvents = {
     });
   },
 
-  // Transfert de propriété
   watchOwnershipChange(address: `0x${string}`, onOwnerChange: (isOwner: boolean) => void) {
     return publicClient.watchContractEvent({
       address: RETRO_GAMING_ADDRESS,
@@ -93,7 +89,6 @@ export const contractEvents = {
     })
   },
 
-  // Distribution des récompenses
   watchRewardDistributionUpdate(onUpdate: (data: {
     maxWinners: number;
     platformFeePercent: number;

@@ -1,9 +1,15 @@
 services:
   db:
-    image: mysql
+    image: postgres:latest
     restart: always
     ports:
-      - 3306:3306
-    environment: 
-      MYSQL_ROOT_PASSWORD: mysecretpassword
-      MYSQL_DATABASE: local
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

@@ -1,274 +1,278 @@
 <script lang="ts">
-    import { browser } from '$app/environment';
-    import { onMount, onDestroy } from 'svelte';
-    import { wallet } from '$lib/stores/wallet.js';
-    import { contractActions } from '$lib/contracts/actions.js';
-    import { publicClient } from '$lib/config/contract.js';
-    import { parseEther, formatEther } from 'viem';
-    import ScoreSubmit from '$lib/components/games/scoreSubmit.svelte';
-    import init, { TetrisEngine } from '$lib/games/tetris/pkg/tetris_engine.js';
-    import LeaderBoard from '$lib/components/LeaderBoard.svelte'
-    import Validate from '$lib/components/admin/validate.svelte';
-    import type { TetrisState } from '$lib/types/tetris.js';
-    import { Buffer } from 'buffer';
-    import { tetrisGameState } from '$lib/stores/tetris.js';
-    
+  import { browser } from '$app/environment';
+  import { onMount } from 'svelte';
+  import { contractActions } from '$lib/contracts/actions.js';
+  import { publicClient } from '$lib/config/contract.js';
+  import { parseEther, formatEther } from 'viem';
+  import ScoreSubmit from '$lib/components/games/scoreSubmit.svelte';
+  import init, { TetrisEngine } from '$lib/games/tetris/pkg/tetris_engine.js';
+  import LeaderBoard from '$lib/components/LeaderBoard.svelte';
+  import ValidateScore from '$lib/components/admin/validateScore.svelte';
+  import type { TetrisState } from '$lib/types.js';
+  import { getWalletState } from '$lib/state/wallet.svelte.js';
+  import { getGameState } from '$lib/state/game.svelte.js';
+  import { getUIState } from '$lib/state/ui.svelte.js';
+  import { Buffer } from 'buffer';
+  
+  // Services
+  const walletState = getWalletState();
+  const gameState = getGameState();
+  const uiState = getUIState();
 
-
-    // Constantes
-    const BLOCK_SIZE = 30;
-    const BOARD_WIDTH = 10;
-    const BOARD_HEIGHT = 20;
-    const COLORS = [
-        '#000000', // vide
-        '#FF0000', // I
-        '#00FF00', // O
-        '#0000FF', // T
-        '#FFFF00', // L
-        '#FF00FF', // J
-        '#00FFFF', // S
-        '#FFA500'  // Z
-    ];
-
-    // États
-    let canvas: HTMLCanvasElement;
-    let ctx: CanvasRenderingContext2D;
-    let engine: TetrisEngine | null = $state(null);
-    let gameState = $state<TetrisState | null>(null);
-    let submitting = $state(false);
-    let error = $state<string | null>(null);
-    let score = $state(0);
-    let level = $state(1);
-    let lines = $state(0);
-    let isPaused = $state(false);
-    let isGameOver = $state(false);
-    let isMenuOpen = $state(false);
-    // Fonctions de rendu
-    function toggleMenu() {
-    isMenuOpen = !isMenuOpen;
+  let { data } = $props<{
+      data: {
+        isVerifier: boolean;
+        isAdmin: boolean;
+      }
+    }>();
+  
+  // États globaux avec Runes
+  let mobileView = $state(false);
+  let canvas: HTMLCanvasElement;
+  let ctx: CanvasRenderingContext2D;
+  let engine: TetrisEngine | null = $state(null);
+  let tetrisGameState = $state<TetrisState | null>(null);
+  let submitting = $state(false);
+  let error = $state<string | null>(null);
+  let score = $state(0);
+  let level = $state(1);
+  let lines = $state(0);
+  let isPaused = $state(false);
+  let isGameOver = $state(false);
+  let isMenuOpen = $state(false);
+  let showValidation = $derived(data.isVerifier);
+  type SubmitScoreHandler = (stake: string) => Promise<void>;
+  
+  // États dérivés
+  let isGameActive = $derived(() => {
+    const gameConfig = gameState.configs.tetris;
+    return !!gameConfig?.active;
+  });
+  
+  // Constantes
+  const BLOCK_SIZE = 30;
+  const BOARD_WIDTH = 10;
+  const BOARD_HEIGHT = 20;
+  const COLORS = [
+      '#000000', // vide
+      '#FF0000', // I
+      '#00FF00', // O
+      '#0000FF', // T
+      '#FFFF00', // L
+      '#FF00FF', // J
+      '#00FFFF', // S
+      '#FFA500'  // Z
+  ];
+  // Fonction de mise à jour des données du jeu
+  const updateGameData = async () => {
+    try {
+      const config = await contractActions.read.getGameConfig('tetris');
+      gameState.setConfig('tetris', config);
+  
+      if (config?.active) {
+        const round = await contractActions.read.getRoundData(config.currentRound, 'tetris');
+        gameState.setRound('tetris', round);
+      }
+    } catch (err) {
+      console.error('Error updating game data:', err);
+      gameState.setConfig('tetris', null);
+      gameState.setRound('tetris', null);
+    }
+  };
+  
+  // Fonctions utilitaires
+  function checkMobileView() {
+      if (browser) {
+          mobileView = window.innerWidth <= 768;
+      }
   }
-    function drawBlock(x: number, y: number, color: string) {
-        if (!ctx) return;
-        
-        const xPos = x * BLOCK_SIZE;
-        const yPos = y * BLOCK_SIZE;
-        
-        ctx.fillStyle = color;
-        ctx.fillRect(xPos, yPos, BLOCK_SIZE, BLOCK_SIZE);
-        
-        // Effet 3D
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.fillRect(xPos, yPos, BLOCK_SIZE, 2);
-        ctx.fillRect(xPos, yPos, 2, BLOCK_SIZE);
-        
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.fillRect(xPos + BLOCK_SIZE - 2, yPos, 2, BLOCK_SIZE);
-        ctx.fillRect(xPos, yPos + BLOCK_SIZE - 2, BLOCK_SIZE, 2);
+  
+  function isMobile() {
+      return browser && (window.innerWidth <= 768 || 'ontouchstart' in window);
+  }
+  
+ 
+  // Fonctions de mise à jour du state
+  function updateGameState() {
+    if (!engine) return;
+    try {
+      const state = engine.get_state();
+      if (state) {
+        tetrisGameState = state;
+        score = state.score ?? 0;
+        level = state.level ?? 1;
+        lines = state.lines ?? 0;
+        isPaused = state.is_paused;
+        isGameOver = state.is_game_over;
+  
+        // Mise à jour du state global
+        gameState.updateTetrisState({
+          score: state.score ?? 0,
+          level: state.level ?? 1,
+          lines: state.lines ?? 0,
+          is_game_over: state.is_game_over,
+          is_paused: state.is_paused,
+          board: state.board ?? [],
+          current_piece: state.current_piece,
+          ghost_piece: state.ghost_piece,
+          next_piece: state.next_piece,
+          hold_piece: state.hold_piece,
+          is_soft_dropping: state.is_soft_dropping ?? false,
+          can_hold: state.can_hold ?? true,
+          moves_count: state.moves_count ?? 0,
+          last_update: state.last_update ?? 0,
+          drop_interval: state.drop_interval ?? 0
+        });
+  
+        render();
+      }
+    } catch (err) {
+      console.error('Error updating game state:', err);
     }
-
-    function drawGrid() {
-        if (!ctx) return;
-        ctx.strokeStyle = '#333333';
-        ctx.lineWidth = 1;
-       
-        for (let i = 0; i <= BOARD_WIDTH; i++) {
-            ctx.beginPath();
-            ctx.moveTo(i * BLOCK_SIZE, 0);
-            ctx.lineTo(i * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
-            ctx.stroke();
-        }
-        
-      
-        for (let i = 0; i <= BOARD_HEIGHT; i++) {
-            ctx.beginPath();
-            ctx.moveTo(0, i * BLOCK_SIZE);
-            ctx.lineTo(BOARD_WIDTH * BLOCK_SIZE, i * BLOCK_SIZE);
-            ctx.stroke();
-        }
-    }
-
-    function render() {
-        if (!ctx || !gameState) return;
-
-     
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        drawGrid();
-
+  }
+  
+  function handleStartNewGame() {
+    if (!engine) return;
+    gameState.resetTetrisState();
+    isPaused = false;
+    isGameOver = false;
+    error = null;
+    engine.start();
+    updateGameState();
+    startGameLoop();
+  }
+  function drawBlock(x: number, y: number, color: string) {
+    if (!ctx) return;
+    const xPos = x * BLOCK_SIZE;
+    const yPos = y * BLOCK_SIZE;
     
-        gameState.board.forEach((row: number[], y: number) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(xPos, yPos, BLOCK_SIZE, BLOCK_SIZE);
+    
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.fillRect(xPos, yPos, BLOCK_SIZE, 2);
+    ctx.fillRect(xPos, yPos, 2, BLOCK_SIZE);
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(xPos + BLOCK_SIZE - 2, yPos, 2, BLOCK_SIZE);
+    ctx.fillRect(xPos, yPos + BLOCK_SIZE - 2, BLOCK_SIZE, 2);
+  }
+  
+  function drawGrid() {
+    if (!ctx) return;
+    ctx.strokeStyle = '#333333';
+    ctx.lineWidth = 1;
+    
+    for (let i = 0; i <= BOARD_WIDTH; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * BLOCK_SIZE, 0);
+        ctx.lineTo(i * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
+        ctx.stroke();
+    }
+    
+    for (let i = 0; i <= BOARD_HEIGHT; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, i * BLOCK_SIZE);
+        ctx.lineTo(BOARD_WIDTH * BLOCK_SIZE, i * BLOCK_SIZE);
+        ctx.stroke();
+    }
+  }
+  
+  function render() {
+    if (!ctx || !gameState) return;
+  
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    drawGrid();
+  
+    tetrisGameState?.board.forEach((row: number[], y: number) => {
+        row.forEach((cell: number, x: number) => {
+            if (cell !== 0) {
+                drawBlock(x, y, COLORS[cell]);
+            }
+        });
+    });
+  
+    if (tetrisGameState?.current_piece) {
+        const piece = tetrisGameState.current_piece;
+        piece.shape.forEach((row: number[], y: number) => {
             row.forEach((cell: number, x: number) => {
                 if (cell !== 0) {
-                    drawBlock(x, y, COLORS[cell]);
+                    drawBlock(
+                        piece.x + x,
+                        piece.y + y,
+                        COLORS[piece.piece_type]
+                    );
                 }
             });
         });
-
-        if (gameState.current_piece) {
-            const piece = gameState.current_piece;
-            piece.shape.forEach((row: number[], y: number) => {
-                row.forEach((cell: number, x: number) => {
-                    if (cell !== 0) {
-                        drawBlock(
-                            piece.x + x,
-                            piece.y + y,
-                            COLORS[piece.piece_type]
-                        );
-                    }
-                });
-            });
-        }
-
-        if (gameState.ghost_piece) {
-            const ghost = gameState.ghost_piece;
-            ctx.globalAlpha = 0.3;
-            ghost.shape.forEach((row: number[], y: number) => {
-                row.forEach((cell: number, x: number) => {
-                    if (cell !== 0) {
-                        drawBlock(
-                            ghost.x + x,
-                            ghost.y + y,
-                            COLORS[ghost.piece_type]
-                        );
-                    }
-                });
-            });
-            ctx.globalAlpha = 1;
-        }
     }
+  
+    if (tetrisGameState?.ghost_piece) {
+        const ghost = tetrisGameState.ghost_piece;
+        ctx.globalAlpha = 0.3;
+        ghost.shape.forEach((row: number[], y: number) => {
+            row.forEach((cell: number, x: number) => {
+                if (cell !== 0) {
+                    drawBlock(
+                        ghost.x + x,
+                        ghost.y + y,
+                        COLORS[ghost.piece_type]
+                    );
+                }
+            });
+        });
+        ctx.globalAlpha = 1;
+    }
+  }
+  // Gestion de la boucle de jeu
+  function startGameLoop() {
+    if (!browser) return () => {};
     
-    function updateGameState() {
-        if (!engine) return;
-        try {
-            const state = engine.get_state();
-            if (state) {
-                gameState = state;
-                if (state.is_game_over) {
-                    isGameOver = true;
-                    score = state.score;
-                    level = state.level;
-                    lines = state.lines;
-                    tetrisGameState.update(currentState => {
-                        currentState.score = state.score;
-                        currentState.level = state.level;
-                        currentState.lines = state.lines;
-                        currentState.isGameOver = true;
-                        return currentState;
-                    });
-                    // Arrêt du jeu
-                    if (engine) {
-                        engine.update(Date.now());
-                    }
-                } else {
-                    score = state.score;
-                    level = state.level;
-                    lines = state.lines;
-                    isPaused = state.is_paused;
-                    isGameOver = state.is_game_over;
-                    tetrisGameState.update(currentState => {
-                        currentState.score = state.score;
-                        currentState.level = state.level;
-                        currentState.lines = state.lines;
-                        currentState.isGameOver = false;
-                        return currentState;
-                    });
-                }
-                render();
-            }
-        } catch (err) {
-            console.error('Error updating game state:', err);
+    let frameId: number | null = null;
+  
+    const gameLoop = () => {
+        if (engine && !isPaused && !isGameOver) {
+            engine.update(Date.now());
+            updateGameState();
         }
-    }
-
-    // Boucle de jeu
-    function startGameLoop() {
-        if (!browser) return () => {};
-        
-        let frameId: number | null = null;
-        let lastTime = Date.now(); 
-        const updateInterval = 1000; 
-
-        const gameLoop = () => {
-            const currentTime = Date.now();
-            const delta = currentTime - lastTime;
-
-            if (engine && !isPaused && !isGameOver) {
-                if (delta >= updateInterval) {
-                    engine.update(currentTime);
-                    lastTime = currentTime;
-                    updateGameState();
-                }
-            }
-
-            frameId = requestAnimationFrame(gameLoop);
-        };
-
-        gameLoop();
-        return () => {
-            if (frameId !== null && browser) {
-                cancelAnimationFrame(frameId);
-                frameId = null;
-            }
-        };
-    }
-    // Contrôles du jeu
-    function handleKeydown(event: KeyboardEvent) {
-    if (!engine) return;
+        frameId = requestAnimationFrame(gameLoop);
+    };
+  
+    gameLoop();
+    return () => {
+        if (frameId !== null && browser) {
+            cancelAnimationFrame(frameId);
+            frameId = null;
+        }
+    };
+  }
+  
+  // Gestion des contrôles
+  function handleKeydown(event: KeyboardEvent) {
+    if (!engine || isGameOver) return;
 
     const actions: Record<string, () => void> = {
-        ArrowLeft: () => {
-            if (!isPaused && !isGameOver) {
-                if (engine) {
-                    engine.move_piece(-1);
-                }
-                updateGameState();
-            }
-        },
-        ArrowRight: () => {
-            if (!isPaused && !isGameOver) {
-                if (engine) {
-                    engine.move_piece(1);
-                }
-                updateGameState();
-            }
-        },
-        ArrowDown: () => {
-            if (!isPaused && !isGameOver) {
-                if (engine) {
-                    engine.start_soft_drop();
-                }
-                updateGameState();
-            }
-        },
-        ArrowUp: () => {
-            if (!isPaused && !isGameOver) {
-                if (engine) {
-                    engine.rotate();
-                }
-                updateGameState();
-            }
-        },
-        Space: () => {
-            if (!isPaused && !isGameOver) {
-                if (engine) {
-                    engine.hard_drop();
-                }
-                updateGameState();
-            }
-        },
+        ArrowLeft: () => engine?.move_piece(-1),
+        ArrowRight: () => engine?.move_piece(1),
+        ArrowDown: () => engine?.start_soft_drop(),
+        ArrowUp: () => engine?.rotate(),
+        Space: () => engine?.hard_drop(),
         Escape: () => {
-            if (engine) {
-                engine.toggle_pause();
+            if (isPaused) {
+                isPaused = false;
+                engine?.toggle_pause();
+                startGameLoop(); // Relance la boucle de jeu
+            } else {
+                isPaused = true;
+                engine?.toggle_pause();
             }
             updateGameState();
         },
         KeyR: () => {
             if (isGameOver || isPaused) {
-                if (engine) {
-                    engine.start();
-                }
-                updateGameState();
+                handleStartNewGame();
             }
         }
     };
@@ -277,196 +281,164 @@
     if (action) {
         event.preventDefault();
         action();
-    }
-}
-
-function handleKeyup(event: KeyboardEvent) {
-    if (!engine) return;
-
-    if (event.code === 'ArrowDown') {
-        engine.end_soft_drop();
         updateGameState();
     }
 }
 
-// Ajouter en haut du script
-function isMobile() {
-  return browser && (window.innerWidth <= 768 || 'ontouchstart' in window);
-}
-
-function handleTouch(action: string) {
-  if (!engine) return;
   
-  switch(action) {
-    case 'left':
-      engine.move_piece(-1);
-      break;
-    case 'right': 
-      engine.move_piece(1);
-      break;
-    case 'down':
-      engine.start_soft_drop();
-      break;
-    case 'endDown':
-      engine.end_soft_drop();
-      break; 
-    case 'drop':
-      engine.hard_drop();
-      break;
-    case 'rotate':
-      engine.rotate();
-      break;
-  }
-  updateGameState();
-}
-
-    
-    
-    async function handleSubmitScore(stake: string) {
-      if (!engine || !$wallet.address || !gameState) {
-          console.error('Missing required data for score submission');
-          return;
-      }
-      
-      try {
-          submitting = true;
-          error = null;
-
-          const [block, gameConfig] = await Promise.all([
-          publicClient.getBlock(),
-          contractActions.read.getGameConfig('tetris')
-          ]);
-          
-          if (!gameConfig || !gameConfig.saltKey) {
-          throw new Error('Could not get game configuration or salt key');
-          }
-
-          const stakeInWei = parseEther(stake);
-          if (stakeInWei < gameConfig.minStake) {
-          throw new Error(`Minimum stake required: ${formatEther(gameConfig.minStake)} POL`);
-          }
-
-          const scoreHash = engine.get_score_hash(
-          $wallet.address,                    
-          gameConfig.saltKey.toString(),      
-          BigInt(block.number)    
-          );
-          console.log(Object.keys(engine));
-          if (!scoreHash || !scoreHash.length) {
-          throw new Error('Failed to generate score hash');
-          }
-
-          console.log('Raw score hash:', scoreHash);
-
-          const scoreHashHex = `0x${Buffer.from(scoreHash).toString('hex')}` as `0x${string}`;
-
-          console.log('Score submission params:', {
-          game: 'tetris',
-          score: gameState.score.toString(),
-          scoreHashHex,
-          stake,
-          blockNumber: block.number.toString()
-          });
-
-          try {
-          const tx = await contractActions.write.submitScore({
-              game: 'tetris',
-              score: BigInt(gameState.score),
-              hash: scoreHashHex,
-              value: BigInt(stakeInWei),
-              account: $wallet.address as `0x${string}`
-          });
-
-          await publicClient.waitForTransactionReceipt({ hash: tx });
-          console.log('Score submitted successfully:', tx);
-
-          } catch (submitError) {
-          console.error('Transaction failed:', submitError);
-          error = submitError instanceof Error ? submitError.message : 'Transaction failed';
-          throw submitError;
-          }
-
-      } catch (err) {
-          console.error('Error submitting score:', err);
-          error = err instanceof Error ? err.message : 'An unknown error occurred';
-      } finally {
-          submitting = false;
-      }
+  function handleKeyup(event: KeyboardEvent) {
+    if (!engine) return;
+  
+    if (event.code === 'ArrowDown') {
+        engine.end_soft_drop();
+        updateGameState();
     }
-
-    onMount(() => {
-      if (!browser) return;
-
-      const initGame = async () => {
-          try {
-              // @ts-ignore
-              await init();
-              
-              if (!canvas) return;
-            
-              ctx = canvas.getContext('2d')!;
-              canvas.width = BLOCK_SIZE * BOARD_WIDTH;
-              canvas.height = BLOCK_SIZE * BOARD_HEIGHT;
-
-              engine = new TetrisEngine(BOARD_WIDTH, BOARD_HEIGHT);
-              
-              if (browser) {
-                  window.addEventListener('keydown', handleKeydown);
-              }
-              
-              engine.start();
-              updateGameState();
-             
-              const gameLoopCleanup = startGameLoop();
-
-              return () => {
-                  if (browser) {
-                      window.removeEventListener('keydown', handleKeydown);
-                      window.removeEventListener('keyup', handleKeyup);
-                  }
-                  gameLoopCleanup();
-                  if (engine) {
-                      engine.free();
-                      engine = null;
-                  }
-              };
-          } catch (err) {
-              console.error('Failed to initialize game:', err);
-              error = 'Failed to start game';
-              return () => {};
-          }
-      };
-
-      initGame();
-      return () => {
-          if (engine) {
-              engine.free();
-              engine = null;
-          }
-          if (browser) {
-              window.removeEventListener('keydown', handleKeydown);
-              window.addEventListener('keyup', handleKeyup);
-          }
-      };
-  });
-    onDestroy(() => {
-        if (engine) {
-            engine.free();
-            engine = null;
+  }
+  
+  function handleTouch(action: string) {
+    if (!engine) return;
+    
+    switch(action) {
+        case 'left':
+            engine.move_piece(-1);
+            break;
+        case 'right': 
+            engine.move_piece(1);
+            break;
+        case 'down':
+            engine.start_soft_drop();
+            break;
+        case 'endDown':
+            engine.end_soft_drop();
+            break;
+        case 'drop':
+            engine.hard_drop();
+            break;
+        case 'rotate':
+            engine.rotate();
+            break;
+    }
+    updateGameState();
+  }
+  // Gestion de la soumission des scores
+  const handleSubmitScore: SubmitScoreHandler = async (stake: string) => {
+    if (!engine || !walletState.address || !gameState) {
+        console.error('Missing required data for score submission');
+        return;
+    }
+    
+    try {
+        submitting = true;
+        error = null;
+  
+        const [block, gameConfig] = await Promise.all([
+            publicClient.getBlock(),
+            contractActions.read.getGameConfig('tetris')
+        ]);
+        
+        if (!gameConfig?.saltKey) {
+            throw new Error('Could not get game configuration or salt key');
         }
-        if (browser) {
+  
+        const stakeInWei = parseEther(stake);
+        if (stakeInWei < gameConfig.minStake) {
+            throw new Error(`Minimum stake required: ${formatEther(gameConfig.minStake)} POL`);
+        }
+  
+        const scoreHash = engine.get_score_hash(
+            walletState.address,
+            gameConfig.saltKey.toString(),
+            BigInt(block.number)
+        );
+  
+        if (!scoreHash?.length) {
+            throw new Error('Failed to generate score hash');
+        }
+  
+        const scoreHashHex = `0x${Buffer.from(scoreHash).toString('hex')}` as `0x${string}`;
+  
+        const tx = await contractActions.write.submitScore({
+            game: 'tetris',
+            score: BigInt(tetrisGameState?.score ?? 0),
+            hash: scoreHashHex,
+            value: BigInt(stakeInWei),
+            account: walletState.address as `0x${string}`
+        });
+  
+        await publicClient.waitForTransactionReceipt({ hash: tx });
+        await updateGameData();
+  
+    } catch (err) {
+        console.error('Error submitting score:', err);
+        error = err instanceof Error ? err.message : 'An unknown error occurred';
+    } finally {
+        submitting = false;
+    }
+  }
+  
+  // Effets et initialisation
+  $effect(() => {
+    if (browser) {
+        updateGameData();
+        const interval = setInterval(updateGameData, 60000);
+        return () => clearInterval(interval);
+    }
+  });
+  
+  // Cycle de vie du composant
+  onMount(() => {
+    if (!browser) return;
+  
+    checkMobileView();
+    window.addEventListener('resize', checkMobileView);
+  
+    const initGame = async () => {
+        try {
+            await init();
+            
+            if (!canvas) return;
+            
+            ctx = canvas.getContext('2d')!;
+            canvas.width = BLOCK_SIZE * BOARD_WIDTH;
+            canvas.height = BLOCK_SIZE * BOARD_HEIGHT;
+  
+            engine = new TetrisEngine(BOARD_WIDTH, BOARD_HEIGHT);
+            
+            window.addEventListener('keydown', handleKeydown);
+            window.addEventListener('keyup', handleKeyup);
+            
+            engine.start();
+            updateGameState();
+            
+            return startGameLoop();
+        } catch (err) {
+            console.error('Failed to initialize game:', err);
+            error = 'Failed to start game';
+            return () => {};
+        }
+    };
+  
+    initGame().then(cleanup => {
+        return () => {
+            window.removeEventListener('resize', checkMobileView);
             window.removeEventListener('keydown', handleKeydown);
             window.removeEventListener('keyup', handleKeyup);
-        }
-        
+            if (cleanup) cleanup();
+            if (engine) {
+                engine.free();
+                engine = null;
+            }
+        };
     });
-</script>
-
+  });
   
-  <div class="min-h-screen">
+  </script>
+  
+  
+  <div class="page-container">
     <div class="game-container">
       <!-- Left Panel -->
-      <div class="game-panel">
+      <div class="game-panel left-panel">
         <div class="stats-section">
           <div class="stats-grid">
             <div class="stat-item">
@@ -485,17 +457,21 @@ function handleTouch(action: string) {
         </div>
   
         <div class="wallet-section">
-          {#if !$wallet.address}
+          {#if !walletState.address}
             <div class="wallet-warning">
               Connect wallet to submit scores
             </div>
-          {:else}
-            <ScoreSubmit
-              gameId="tetris"
-              {score}
-              onSubmit={handleSubmitScore}
-              disabled={submitting}
-            />
+          {:else if !isGameOver}
+          <ScoreSubmit
+          gameId="tetris"
+            {score}
+            isGameOver={false}
+            gameStats={{
+              minStake: BigInt(gameState.configs.tetris?.minStake ?? 0),
+              platformFee: (gameState.configs.tetris?.platformFee ?? 0) / 100
+            }}
+            onSubmit={() => handleSubmitScore('')}
+          />
           {/if}
         </div>
       </div>
@@ -513,10 +489,21 @@ function handleTouch(action: string) {
               <div class="overlay-content">
                 <h2>Game Paused</h2>
                 <p>Press ESC to resume</p>
+                <button 
+                  class="resume-button"
+                  onclick={() => {
+                    isPaused = false;
+                    engine?.toggle_pause();
+                    startGameLoop();
+                    updateGameState();
+                  }}
+                >
+                  Resume Game
+                </button>
               </div>
             </div>
           {/if}
-  
+    
           {#if isGameOver}
             <div class="overlay">
               <div class="overlay-content">
@@ -525,14 +512,28 @@ function handleTouch(action: string) {
                 {#if error}
                   <div class="error-message">{error}</div>
                 {/if}
+                
+                {#if walletState.address}
+                <ScoreSubmit
+                gameId="tetris"
+                  {score}
+                  isGameOver={true}
+                  gameStats={{
+                    minStake: BigInt(gameState.configs.tetris?.minStake ?? 0),
+                    platformFee: (gameState.configs.tetris?.platformFee ?? 0) / 100
+                  }}
+                  onSubmit={() => handleSubmitScore('')}
+                />
+                
+                {:else}
+                  <div class="wallet-warning">
+                    Connect wallet to submit scores
+                  </div>
+                {/if}
+  
                 <button 
                   class="retry-button"
-                  onclick={() => {
-                    if (engine) {
-                      engine.start();
-                      updateGameState();
-                    }
-                  }}
+                  onclick={handleStartNewGame}
                   disabled={submitting}
                 >
                   Play Again
@@ -540,6 +541,8 @@ function handleTouch(action: string) {
               </div>
             </div>
           {/if}
+  
+          <!-- Touch Controls -->
           <div class="touch-controls" class:hidden={!browser || !isMobile()}>
             <div class="touch-row">
               <button class="touch-btn rotate" ontouchstart={() => handleTouch('rotate')}>
@@ -550,8 +553,10 @@ function handleTouch(action: string) {
               <button class="touch-btn" ontouchstart={() => handleTouch('left')}>
                 <span>←</span>
               </button>
-              <button class="touch-btn" ontouchstart={() => handleTouch('down')} 
-                      ontouchend={() => handleTouch('endDown')}>
+              <button class="touch-btn" 
+                ontouchstart={() => handleTouch('down')} 
+                ontouchend={() => handleTouch('endDown')}
+              >
                 <span>↓</span>
               </button>
               <button class="touch-btn" ontouchstart={() => handleTouch('right')}>
@@ -564,13 +569,11 @@ function handleTouch(action: string) {
               </button>
             </div>
           </div>
-        
         </div>
       </div>
   
       <!-- Right Panel -->
-      <div class="game-panel">
-        <button class="menu-toggle" onclick={toggleMenu}>reduire</button>
+      <div class="game-panel right-panel" class:hidden={isMobile()}>
         <div class="controls-section">
           <h3 class="section-title">Controls</h3>
           <ul class="controls-list">
@@ -598,51 +601,74 @@ function handleTouch(action: string) {
         </div>
       </div>
     </div>
+  
+    <!-- Leaderboard Section -->
     <div class="leaderboard-section">
       <LeaderBoard selectedGame="tetris" />
     </div>
   
-    {#if $wallet.isVerifier}
-      <div class="validation-section">
-        <Validate selectedGame="tetris" />
-      </div>
-    {/if}
+    <!-- Validation Section -->
+    <div class="validation-section">
+      {#if walletState.isVerifier}
+        <ValidateScore selectedGame="tetris" />
+      {/if}
+    </div>
+
   </div>
   
   <style>
-    .game-container {
-      display: grid;
-      grid-template-columns: 300px minmax(auto, 600px) 300px;
+    /* Layout Container */
+    .page-container {
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
       gap: 2rem;
-      max-width: var(--max-width-game);
-      margin: 0 auto;
       padding: 2rem var(--spacing-screen-safe);
-      align-items: start;
     }
   
+    .game-container {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 2rem;
+      width: 100%;
+      min-width: 80vw; /* Ajustez la valeur selon vos besoins */
+      max-width: var(--max-width-game);
+      margin: 0 auto;
+    }
+  
+    /* Game Panels */
     .game-panel {
       background: var(--color-surface);
       border-radius: 1rem;
       overflow: hidden;
       height: fit-content;
+      min-width: 180px;
     }
   
+    /* Stats Section */
     .stats-section {
-      padding: 1.5rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 1rem;
     }
   
     .stats-grid {
+      align-items: center;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
+      gap:0.25rem;
+      width: 80%;
     }
   
     .stat-item {
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 0.75rem;
+      padding: 0.5rem;
       background: rgba(0, 0, 0, 0.2);
       border-radius: 0.5rem;
     }
@@ -650,6 +676,7 @@ function handleTouch(action: string) {
     .stat-label {
       font-size: 0.875rem;
       color: var(--color-text-secondary);
+      text-transform: uppercase;
     }
   
     .stat-value {
@@ -658,6 +685,7 @@ function handleTouch(action: string) {
       color: var(--color-text);
     }
   
+    /* Wallet Section */
     .wallet-section {
       padding: 1.5rem;
     }
@@ -671,6 +699,7 @@ function handleTouch(action: string) {
       font-size: 0.875rem;
     }
   
+    /* Game Area */
     .game-area {
       position: relative;
       display: flex;
@@ -682,17 +711,21 @@ function handleTouch(action: string) {
       background: var(--color-surface);
       padding: 1rem;
       border-radius: 1rem;
+      width: 100%;
     }
   
     canvas {
       display: block;
-      border-radius: 0.5rem;
+      width: 100%;
+      height: auto;
+      border: 2px solid #fff;
     }
   
     canvas.game-over {
       opacity: 0.5;
     }
   
+    /* Overlay */
     .overlay {
       position: absolute;
       inset: 0;
@@ -709,8 +742,17 @@ function handleTouch(action: string) {
       background: var(--color-surface);
       border-radius: 1rem;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      min-width: 280px;
     }
   
+    .overlay-content {
+      margin: 1rem 0;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 0.5rem;
+    }
+  
+    /* Controls Section */
     .controls-section {
       padding: 1.5rem;
     }
@@ -744,7 +786,9 @@ function handleTouch(action: string) {
       font-family: monospace;
     }
   
-    .retry-button {
+    /* Buttons */
+    .retry-button,
+    .resume-button {
       margin-top: 1rem;
       padding: 0.75rem 1.5rem;
       background: var(--color-primary);
@@ -756,8 +800,10 @@ function handleTouch(action: string) {
       transition: all 0.2s;
     }
   
-    .retry-button:hover:not(:disabled) {
+    .retry-button:hover:not(:disabled),
+    .resume-button:hover:not(:disabled) {
       opacity: 0.9;
+      transform: translateY(-1px);
     }
   
     .retry-button:disabled {
@@ -765,89 +811,118 @@ function handleTouch(action: string) {
       cursor: not-allowed;
     }
   
-    .error-message {
-      margin-top: 1rem;
-      padding: 0.75rem;
-      background: rgba(239, 68, 68, 0.1);
-      color: rgb(239, 68, 68);
-      border-radius: 0.5rem;
+    /* Touch Controls */
+    .touch-controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 100;
+      padding: 10px;
     }
   
-    .leaderboard-section {
-      margin-top: 3rem;
-      padding: 0 var(--spacing-screen-safe);
+    .touch-controls.hidden {
+      display: none;
+    }
+  
+    .touch-row {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+  
+    .touch-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+      user-select: none;
+    }
+  
+    .touch-btn:active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  
+    .touch-btn.rotate {
+      background: rgba(var(--color-primary-rgb), 0.3);
+    }
+  
+    /* Additional Sections */
+    .leaderboard-section,
+    .validation-section {
+      width: 100%;
       max-width: var(--max-width-game);
-      margin-inline: auto;
+      margin: 0 auto;
+      padding: 0 var(--spacing-screen-safe);
     }
   
     .validation-section {
       margin-top: 2rem;
-      padding: 0 var(--spacing-screen-safe);
-      max-width: var(--max-width-game);
-      margin-inline: auto;
     }
   
+    /* Responsive Design */
     @media (max-width: 1200px) {
       .game-container {
-        grid-template-columns: 1fr;
+        flex-direction: column;
+        align-items: center;
         gap: 1rem;
+        max-width: 60vw;
       }
   
       .game-panel {
+        width: 100%;
         max-width: 600px;
         margin: 0 auto;
       }
+  
+      canvas {
+        width: auto;
+        height: auto;
+        max-width: 100vw;
+        max-height: 100vh;
+      }
+  
+      .stats-section {
+        flex-direction: row;
+        justify-content: space-around;
+      }
     }
   
-  .touch-controls {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    z-index: 100;
-    padding: 10px;
-  }
+    @media (max-width: 768px) {
+      .page-container {
+        padding: 1rem;
+      }
 
-  .touch-controls.hidden {
-    display: none;
-  }
-
-  .touch-row {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-  }
-
-  .touch-btn {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    font-size: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    touch-action: manipulation;
-    user-select: none;
-  }
-
-  .touch-btn:active {
-    background: rgba(255, 255, 255, 0.3);
-  }
-
-  .touch-btn.rotate {
-    background: rgba(var(--color-primary-rgb), 0.3);
-  }
-
-  @media (min-width: 769px) {
-    .touch-controls {
-      display: none;
+      .left-panel {
+        display: none;
+      }
+  
+      .right-panel {
+        display: none;
+      }
+  
+      .game-panel {
+        margin: 0;
+      }
+  
+      .touch-controls {
+        display: flex;
+      }
     }
-  }
-
+  
+    @media (min-width: 769px) {
+      .touch-controls {
+        display: none;
+      }
+    }
   </style>

@@ -1,97 +1,157 @@
+<!-- lib/components/Connect.svelte -->
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { getWalletClient, publicClient, contractEvents } from '$lib/config/contract.js'
-  import { wallet } from '$lib/stores/wallet.js'
-  import { CONTRACT_CONFIG, RETRO_GAMING_ADDRESS } from '$lib/config/index.js'
-  import { parseEther, formatEther } from 'viem'
+  import { getWalletClient, publicClient, RETRO_GAMING_ADDRESS } from '$lib/config/contract.js';
+  import { retroGamingABI } from '$lib/contracts/abi.js';
+  import { getUIState } from '$lib/state/ui.svelte.js';
+  import { getWalletState } from '$lib/state/wallet.svelte.js';
+  import { formatEther } from 'viem';
 
-  // État local pour les withdrawals
-  let isWithdrawing = false;
+  const uiState = getUIState();
+  const walletState = getWalletState();
 
-  // Connexion
-  async function handleConnect() {
-    try {
-      await wallet.connect();
-    } catch (error) {
-      console.error('Connection error:', error);
+  async function connect() {
+    if (!window.ethereum) {
+      uiState.error('No wallet detected!');
+      return;
     }
-  }
 
-  // Retrait des gains
-  async function handleWithdraw() {
-    if (!$wallet.address || $wallet.pendingWithdrawals === 0n) return;
-    
     try {
-      isWithdrawing = true;
-      await wallet.withdraw();
-    } catch (error) {
-      console.error('Withdrawal error:', error);
+      walletState.isConnecting = true;
+
+      const walletClient = await getWalletClient();
+      const [newAddress] = await walletClient.requestAddresses();
+
+      if (!newAddress) {
+        throw new Error('No address returned');
+      }
+
+      const [ownerAddress, verifierStatus, withdrawals] = await Promise.all([
+        publicClient.readContract({
+          address: RETRO_GAMING_ADDRESS,
+          abi: retroGamingABI,
+          functionName: 'owner'
+        }),
+        publicClient.readContract({
+          address: RETRO_GAMING_ADDRESS,
+          abi: retroGamingABI,
+          functionName: 'isVerifier',
+          args: [newAddress]
+        }),
+        publicClient.readContract({
+          address: RETRO_GAMING_ADDRESS,
+          abi: retroGamingABI,
+          functionName: 'getPendingWithdrawals',
+          args: [newAddress]
+        })
+      ]);
+
+      walletState.connect(
+        newAddress,
+        ownerAddress === newAddress,
+        verifierStatus as boolean,
+        withdrawals as bigint
+      );
+
+      // Setup ethereum events
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('disconnect', disconnect);
+
+      uiState.success('Successfully connected wallet');
+
+    } catch (err) {
+      console.error('Connection error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to connect wallet';
+      uiState.error(errorMessage);
     } finally {
-      isWithdrawing = false;
+      walletState.isConnecting = false;
     }
   }
 
-
-  async function handleDisconnect() {
-    await wallet.disconnect();
+  function handleAccountsChanged(accounts: string[]) {
+    if (accounts.length === 0) {
+      disconnect();
+    } else if (accounts[0]?.toLowerCase() !== walletState.address?.toLowerCase()) {
+      connect();
+    }
   }
 
-  // Cleanup à la destruction du composant
+  function disconnect() {
+    if (window.ethereum) {
+      window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+      window.ethereum.removeListener('disconnect', disconnect);
+    }
+    walletState.disconnect();
+  }
+
+  async function withdraw() {
+    if (!walletState.address || walletState.pendingWithdrawals === 0n) return;
+
+    try {
+      const walletClient = await getWalletClient();
+      
+      const hash = await walletClient.writeContract({
+        address: RETRO_GAMING_ADDRESS,
+        abi: retroGamingABI,
+        functionName: 'withdraw',
+        account: walletState.address
+      });
+
+      await publicClient.waitForTransactionReceipt({ hash });
+      
+      walletState.setPendingWithdrawals(0n);
+      uiState.success('Successfully withdrew funds');
+
+    } catch (err) {
+      console.error('Withdrawal error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to withdraw';
+      uiState.error(errorMessage);
+    }
+  }
+
+  // Cleanup on unmount
   onDestroy(() => {
-    if ($wallet.address) {
-      wallet.disconnect();
+    if (walletState.isConnected) {
+      disconnect();
     }
   });
 </script>
 
 <div class="wallet-connect">
-  {#if $wallet.error}
-    <p class="error">{$wallet.error}</p>
-  {/if}
-
-  {#if $wallet.address}
+  {#if walletState.isConnected}
     <div class="connected">
       <span class="address">
-        {$wallet.address.slice(0, 6)}...{$wallet.address.slice(-4)}
+        {walletState.formattedAddress}
       </span>
       
-      {#if $wallet.pendingWithdrawals > 0n}
-        <button 
-          class="withdraw" 
-          on:click={handleWithdraw}
-          disabled={isWithdrawing}
-        >
-          {isWithdrawing ? 'Withdrawing...' : `Withdraw ${formatEther($wallet.pendingWithdrawals)} ETH`}
+      {#if walletState.pendingWithdrawals > 0n}
+        <button class="withdraw" on:click={withdraw}>
+          Withdraw {formatEther(walletState.pendingWithdrawals)} ETH
         </button>
       {/if}
 
-      {#if $wallet.isAdmin}
+      {#if walletState.isAdmin}
         <span class="badge admin">Admin</span>
       {/if}
       
-      {#if $wallet.isVerifier}
+      {#if walletState.isVerifier}
         <span class="badge verifier">Verifier</span>
       {/if}
 
-      <button 
-        class="disconnect" 
-        on:click={handleDisconnect}
-      >
+      <button class="disconnect" on:click={disconnect}>
         Disconnect
       </button>
     </div>
   {:else}
     <button 
       class="connect"
-      on:click={handleConnect}
-      disabled={$wallet.isConnecting}
+      on:click={connect}
+      disabled={walletState.isConnecting}
     >
-      {$wallet.isConnecting ? 'Connecting...' : 'Connect Wallet'}
+      {walletState.isConnecting ? 'Connecting...' : 'Connect Wallet'}
     </button>
   {/if}
 </div>
-
-
 
 <style>
   .wallet-connect {
@@ -166,8 +226,5 @@
     cursor: not-allowed;
   }
 
-  .error {
-    color: #dc2626;
-    font-size: 0.875rem;
-  }
+  
 </style>

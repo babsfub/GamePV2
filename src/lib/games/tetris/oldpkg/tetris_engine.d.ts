@@ -8,62 +8,53 @@ export class GameMove {
   private constructor();
   free(): void;
 }
-export class GameState {
+export class GameProof {
   private constructor();
   free(): void;
 }
-export class GameVerificationData {
+export class GameState {
   private constructor();
   free(): void;
 }
 export class TetrisEngine {
   free(): void;
   constructor(width: number, height: number);
-  toggle_pause(): void;
-  start(): void;
-  hold(): boolean;
+  get_state(): any;
   start_soft_drop(): void;
   end_soft_drop(): void;
   update(timestamp: number): boolean;
   move_piece(direction: number): boolean;
   rotate(): boolean;
-  hard_drop(): boolean;
-  get_state(): any;
   get_score_hash(player_address: string, salt_key: string, block_number: bigint): Uint8Array;
-  verify_game_data(verification_data: any): any;
-  verify_score(stored_hash: Uint8Array, player_address: string, block_number: bigint, salt_key: string): boolean;
-  export_game_data(player_address: string, salt_key: string, block_number: bigint): any;
-}
-export class VerificationResult {
-  private constructor();
-  free(): void;
+  verify_score(hash: Uint8Array, player_address: string, block_number: bigint, salt_key: string): boolean;
+  hard_drop(): boolean;
+  hold(): boolean;
+  toggle_pause(): void;
+  start(): void;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
-  readonly __wbg_gamemove_free: (a: number, b: number) => void;
-  readonly __wbg_verificationresult_free: (a: number, b: number) => void;
-  readonly __wbg_gameverificationdata_free: (a: number, b: number) => void;
   readonly __wbg_gameconfig_free: (a: number, b: number) => void;
+  readonly __wbg_gamemove_free: (a: number, b: number) => void;
+  readonly __wbg_gameproof_free: (a: number, b: number) => void;
   readonly __wbg_gamestate_free: (a: number, b: number) => void;
   readonly __wbg_tetrisengine_free: (a: number, b: number) => void;
   readonly tetrisengine_new: (a: number, b: number) => number;
-  readonly tetrisengine_toggle_pause: (a: number) => void;
-  readonly tetrisengine_start: (a: number) => void;
-  readonly tetrisengine_hold: (a: number) => number;
+  readonly tetrisengine_get_state: (a: number) => [number, number, number];
   readonly tetrisengine_start_soft_drop: (a: number) => void;
   readonly tetrisengine_end_soft_drop: (a: number) => void;
   readonly tetrisengine_update: (a: number, b: number) => number;
   readonly tetrisengine_move_piece: (a: number, b: number) => number;
   readonly tetrisengine_rotate: (a: number) => number;
-  readonly tetrisengine_hard_drop: (a: number) => number;
-  readonly tetrisengine_get_state: (a: number) => [number, number, number];
   readonly tetrisengine_get_score_hash: (a: number, b: number, c: number, d: number, e: number, f: bigint) => [number, number];
-  readonly tetrisengine_verify_game_data: (a: number, b: any) => [number, number, number];
   readonly tetrisengine_verify_score: (a: number, b: number, c: number, d: number, e: number, f: bigint, g: number, h: number) => number;
-  readonly tetrisengine_export_game_data: (a: number, b: number, c: number, d: number, e: number, f: bigint) => [number, number, number];
+  readonly tetrisengine_hard_drop: (a: number) => number;
+  readonly tetrisengine_hold: (a: number) => number;
+  readonly tetrisengine_toggle_pause: (a: number) => void;
+  readonly tetrisengine_start: (a: number) => void;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_exn_store: (a: number) => void;

@@ -2,17 +2,19 @@
 	"name": "gamep",
 	"version": "0.0.1",
 	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build && npm run prepack",
-		"preview": "vite preview",
+		"dotenvx": "dotenvx",
+		"dev": "dotenvx run -- vite dev",
+		"build": "dotenvx run -- vite build",
+		"db:start": "dotenvx run -- docker compose up -d",
+		"db:stop": "dotenvx run -- docker compose down",
+		"db:push": "dotenvx run -- drizzle-kit push",
+		"db:studio": "dotenvx run -- drizzle-kit studio",
+		"db:migrate": "dotenvx run -- drizzle-kit generate:pg",
+		"preview": "dotenvx run -- vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"prepack": "svelte-kit sync && svelte-package && publint",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"db:start": "docker compose up",
-		"db:push": "drizzle-kit push",
-		"db:migrate": "drizzle-kit migrate",
-		"db:studio": "drizzle-kit studio"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"files": [
 		"dist",
@@ -42,6 +44,7 @@
 		"@tailwindcss/container-queries": "^0.1.1",
 		"@tailwindcss/forms": "^0.5.10",
 		"@tailwindcss/typography": "^0.5.16",
+		"@types/dotenv": "^6.1.1",
 		"@types/node": "^22.10.10",
 		"autoprefixer": "^10.4.20",
 		"drizzle-kit": "^0.30.2",
@@ -53,11 +56,17 @@
 		"vite": "^6.0.0"
 	},
 	"dependencies": {
+		"@electric-sql/pglite": "^0.2.16",
+		"@neondatabase/serverless": "^0.10.4",
 		"@reown/appkit": "^1.6.5",
 		"@reown/appkit-adapter-wagmi": "^1.6.5",
+		"@types/pg": "^8.11.11",
+		"@vercel/postgres": "^0.10.0",
 		"drizzle-orm": "^0.38.4",
 		"mysql2": "^3.12.0",
+		"pg": "^8.13.1",
 		"pixi.js": "^8.6.6",
+		"postgres": "^3.4.5",
 		"viem": "^2.22.11",
 		"wagmi": "^2.14.9"
 	}

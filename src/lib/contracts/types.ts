@@ -29,6 +29,7 @@ export interface GameConfig {
 }
 
 export interface RoundBasicInfo {
+  roundId : bigint
   startTime: bigint
   endTime: bigint
   totalPrizePool: bigint
@@ -97,3 +98,5 @@ export interface Scores {
   scoreHash: string;       
   verifier: string;        
 };
+
+export type GameId = 'snake' | 'tetris';

@@ -5,6 +5,13 @@ declare module '$app/environment' {
     export const dev: boolean;
 }
 
+declare global {
+    interface window {
+        ethereum?: any;
+        browser?: true | false;
+    }
+    
+}
 
 
 

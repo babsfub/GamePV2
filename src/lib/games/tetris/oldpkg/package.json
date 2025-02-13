@@ -1,0 +1,19 @@
+{
+  "name": "tetris-engine",
+  "type": "module",
+  "collaborators": [
+    "Your Name <your.email@example.com>"
+  ],
+  "description": "A secure WebAssembly Tetris game engine",
+  "version": "0.1.0",
+  "files": [
+    "tetris_engine_bg.wasm",
+    "tetris_engine.js",
+    "tetris_engine.d.ts"
+  ],
+  "main": "tetris_engine.js",
+  "types": "tetris_engine.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
