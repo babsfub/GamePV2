@@ -8,30 +8,32 @@
   import init, { TetrisEngine } from '$lib/games/tetris/pkg/tetris_engine.js';
   import LeaderBoard from '$lib/components/LeaderBoard.svelte';
   import ValidateScore from '$lib/components/admin/validateScore.svelte';
-  import type { TetrisState } from '$lib/types.js';
+  import type { TetrisState, ContractRoundView, RoundView } from '$lib/types.js';
   import { getWalletState } from '$lib/state/wallet.svelte.js';
   import { getGameState } from '$lib/state/game.svelte.js';
   import { getUIState } from '$lib/state/ui.svelte.js';
-  import { Buffer } from 'buffer';
+  import { ScoreService } from '$lib/utils/scoreServices.js';
   
-  // Services
+  // Props et Services
+  let { data } = $props<{
+    data: {
+      isVerifier: boolean;
+      isAdmin: boolean;
+    }
+  }>();
+
   const walletState = getWalletState();
   const gameState = getGameState();
   const uiState = getUIState();
-
-  let { data } = $props<{
-      data: {
-        isVerifier: boolean;
-        isAdmin: boolean;
-      }
-    }>();
   
-  // États globaux avec Runes
+  // États globaux
   let mobileView = $state(false);
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D;
-  let engine: TetrisEngine | null = $state(null);
+  let engine = $state<TetrisEngine | null>(null);
   let tetrisGameState = $state<TetrisState | null>(null);
+  let currentRound = $state<RoundView | null>(null);
+  let contractRound = $state<ContractRoundView | null>(null);
   let submitting = $state(false);
   let error = $state<string | null>(null);
   let score = $state(0);
@@ -40,10 +42,9 @@
   let isPaused = $state(false);
   let isGameOver = $state(false);
   let isMenuOpen = $state(false);
-  let showValidation = $derived(data.isVerifier);
-  type SubmitScoreHandler = (stake: string) => Promise<void>;
-  
+
   // États dérivés
+  let showValidation = $derived(data.isVerifier);
   let isGameActive = $derived(() => {
     const gameConfig = gameState.configs.tetris;
     return !!gameConfig?.active;
@@ -70,8 +71,33 @@
       gameState.setConfig('tetris', config);
   
       if (config?.active) {
-        const round = await contractActions.read.getRoundData(config.currentRound, 'tetris');
-        gameState.setRound('tetris', round);
+        const roundData = await contractActions.read.getRoundData(
+          config.currentRound, 
+          'tetris'
+        ) as ContractRoundView;
+        
+        // Garder une copie des données du contrat
+        contractRound = roundData;
+        
+        // Enrichir avec les données de la DB
+        const dbScores = await fetch('/api/games?gameId=tetris').then(r => r.json());
+        
+        currentRound = {
+          ...roundData,
+          scores: roundData.scores.map(contractScore => {
+            const dbScore = dbScores.find((s: { scoreHash: string }) => s.scoreHash === contractScore.scoreHash);
+            return {
+              ...contractScore,
+              transactionHash: dbScore?.transactionHash ?? '0x0',
+              level: dbScore?.level,
+              lines: dbScore?.lines,
+              moves_count: dbScore?.moves_count,
+              moves_hash: dbScore?.moves_hash
+            };
+          })
+        };
+
+        gameState.setRound('tetris', currentRound);
       }
     } catch (err) {
       console.error('Error updating game data:', err);
@@ -79,6 +105,8 @@
       gameState.setRound('tetris', null);
     }
   };
+
+
   
   // Fonctions utilitaires
   function checkMobileView() {
@@ -321,71 +349,90 @@
     updateGameState();
   }
   // Gestion de la soumission des scores
-  const handleSubmitScore: SubmitScoreHandler = async (stake: string) => {
-    if (!engine || !walletState.address || !gameState) {
-        console.error('Missing required data for score submission');
-        return;
-    }
-    
-    try {
-        submitting = true;
-        error = null;
-  
-        const [block, gameConfig] = await Promise.all([
-            publicClient.getBlock(),
-            contractActions.read.getGameConfig('tetris')
-        ]);
-        
-        if (!gameConfig?.saltKey) {
-            throw new Error('Could not get game configuration or salt key');
-        }
-  
-        const stakeInWei = parseEther(stake);
-        if (stakeInWei < gameConfig.minStake) {
-            throw new Error(`Minimum stake required: ${formatEther(gameConfig.minStake)} POL`);
-        }
-  
-        const scoreHash = engine.get_score_hash(
-            walletState.address,
-            gameConfig.saltKey.toString(),
-            BigInt(block.number)
-        );
-  
-        if (!scoreHash?.length) {
-            throw new Error('Failed to generate score hash');
-        }
-  
-        const scoreHashHex = `0x${Buffer.from(scoreHash).toString('hex')}` as `0x${string}`;
-  
-        const tx = await contractActions.write.submitScore({
-            game: 'tetris',
-            score: BigInt(tetrisGameState?.score ?? 0),
-            hash: scoreHashHex,
-            value: BigInt(stakeInWei),
-            account: walletState.address as `0x${string}`
-        });
-  
-        await publicClient.waitForTransactionReceipt({ hash: tx });
-        await updateGameData();
-  
-    } catch (err) {
-        console.error('Error submitting score:', err);
-        error = err instanceof Error ? err.message : 'An unknown error occurred';
-    } finally {
-        submitting = false;
-    }
+  const handleSubmitScore = async (stake: string) => {
+  if (!engine || !walletState.address || !gameState) {
+    console.error('Missing required data for score submission');
+    return;
   }
   
-  // Effets et initialisation
+  try {
+    submitting = true;
+    error = null;
+
+    const [block, gameConfig] = await Promise.all([
+      publicClient.getBlock(),
+      contractActions.read.getGameConfig('tetris')
+    ]);
+      
+    if (!gameConfig?.saltKey) {
+      throw new Error('Could not get game configuration or salt key');
+    }
+
+    const stakeInWei = parseEther(stake);
+    if (stakeInWei < gameConfig.minStake) {
+      throw new Error(`Minimum stake required: ${formatEther(gameConfig.minStake)} POL`);
+    }
+
+    const scoreHash = engine.get_score_hash(
+      walletState.address,
+      gameConfig.saltKey.toString(),
+      BigInt(block.number)
+    );
+
+    if (!scoreHash?.length) {
+      throw new Error('Failed to generate score hash');
+    }
+
+    const scoreHashHex = `0x${Buffer.from(scoreHash).toString('hex')}` as `0x${string}`;
+
+    // Soumission au smart contract
+    const tx = await contractActions.write.submitScore({
+      game: 'tetris',
+      score: BigInt(tetrisGameState?.score ?? 0),
+      hash: scoreHashHex,
+      value: stakeInWei,
+      account: walletState.address
+    });
+
+    // Attendre la confirmation
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
+
+    // Utiliser ScoreService au lieu du fetch direct
+    await ScoreService.submitScore({
+      gameState: tetrisGameState,
+      playerAddress: walletState.address,
+      score: BigInt(score),
+      blockNumber: BigInt(block.number),
+      stake: stakeInWei,
+      scoreHash: scoreHashHex,
+      transactionHash: tx,
+      contractHash: receipt.blockHash,
+      roundId: gameConfig.currentRound,
+      transactionBlockNumber: receipt.blockNumber,
+      transactionTimestamp: new Date()
+    });
+
+    await updateGameData();
+    uiState.success(`Score submitted! TX: ${tx}`);
+
+  } catch (err) {
+    console.error('Error submitting score:', err);
+    error = err instanceof Error ? err.message : 'An unknown error occurred';
+    uiState.error(error);
+  } finally {
+    submitting = false;
+  }
+};
+
+  // Initialisation et effets
   $effect(() => {
     if (browser) {
-        updateGameData();
-        const interval = setInterval(updateGameData, 60000);
-        return () => clearInterval(interval);
+      updateGameData();
+      const interval = setInterval(updateGameData, 60000);
+      return () => clearInterval(interval);
     }
   });
   
-  // Cycle de vie du composant
   onMount(() => {
     if (!browser) return;
   
@@ -444,37 +491,19 @@
             <div class="stat-item">
               <span class="stat-label">Score</span>
               <span class="stat-value">{score}</span>
-            </div>
-            <div class="stat-item">
+              
+            
               <span class="stat-label">Level</span>
               <span class="stat-value">{level}</span>
-            </div>
-            <div class="stat-item">
+            
               <span class="stat-label">Lines</span>
               <span class="stat-value">{lines}</span>
+            </div>
             </div>
           </div>
         </div>
   
-        <div class="wallet-section">
-          {#if !walletState.address}
-            <div class="wallet-warning">
-              Connect wallet to submit scores
-            </div>
-          {:else if !isGameOver}
-          <ScoreSubmit
-          gameId="tetris"
-            {score}
-            isGameOver={false}
-            gameStats={{
-              minStake: BigInt(gameState.configs.tetris?.minStake ?? 0),
-              platformFee: (gameState.configs.tetris?.platformFee ?? 0) / 100
-            }}
-            onSubmit={() => handleSubmitScore('')}
-          />
-          {/if}
-        </div>
-      </div>
+        
   
       <!-- Game Area -->
       <div class="game-area">
@@ -514,23 +543,18 @@
                 {/if}
                 
                 {#if walletState.address}
-                <ScoreSubmit
-                gameId="tetris"
-                  {score}
-                  isGameOver={true}
-                  gameStats={{
-                    minStake: BigInt(gameState.configs.tetris?.minStake ?? 0),
-                    platformFee: (gameState.configs.tetris?.platformFee ?? 0) / 100
-                  }}
-                  onSubmit={() => handleSubmitScore('')}
-                />
-                
+                  <ScoreSubmit
+                    gameId="tetris"
+                    score={score}
+                    isGameOver={true}
+                    onSubmit={handleSubmitScore}
+                  />
                 {:else}
                   <div class="wallet-warning">
                     Connect wallet to submit scores
                   </div>
                 {/if}
-  
+
                 <button 
                   class="retry-button"
                   onclick={handleStartNewGame}

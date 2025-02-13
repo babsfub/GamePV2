@@ -10,28 +10,23 @@
     GameId, 
     ContractScore,
     Score,
-    GameEngine,
     ValidationMetadata 
   } from '$lib/types.js';
   import { ScoreService } from '$lib/utils/scoreServices.js';
 
   // Props
-  const { 
-    gameId,
-    score,
-    onSubmit,
-    isGameOver,
-    gameEngine,
-    gameState: initialGameState
-  } = $props<{
-    gameId: GameId;
-    score: number;
-    onSubmit: () => Promise<void>;
-    isGameOver: boolean;
-    gameEngine: GameEngine | null;
-    gameState: Record<string, any>;
-  }>();
-
+  // Dans ScoreSubmit.svelte
+const {
+  gameId, 
+  score,
+  onSubmit,
+  isGameOver
+} = $props<{
+  gameId: GameId;
+  score: number;
+  onSubmit: (stake: string) => Promise<void>;
+  isGameOver: boolean;
+}>();
   // États globaux
   const walletState = getWalletState();
   const gameState = getGameState();
@@ -51,8 +46,7 @@
     walletState.isConnected && 
     !submitting &&
     isGameOver &&
-    config?.active &&
-    score > 0
+    config?.active 
   );
 
   let stakeOptions = $derived(() => {
@@ -125,7 +119,7 @@
   }
 
   async function handleSubmit() {
-    if (!canSubmit || !walletState.address || !config || !gameEngine) return;
+    if (!canSubmit || !walletState.address || !config ) return;
 
     try {
       submitting = true;
@@ -135,22 +129,14 @@
       const { contractScore, metadata } = await prepareContractSubmission();
       console.log('Submitting score:', contractScore);
       // Vérifier que le score est valide avant soumission
-      const isValid = gameEngine.verify_score(
-        contractScore.scoreHash,
-        contractScore.player,
-        contractScore.blockNumber,
-        config.saltKey
-      );
-
-      if (!isValid) {
-        throw new Error('Score validation failed');
-      }
+      
 
       // Soumettre au smart contract
       const tx = await submitToContract(contractScore);
       const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
 
       // Sauvegarder en DB
+      const initialGameState = gameState; 
       await submitToDB(contractScore, tx, receipt, initialGameState);
 
       // Mettre à jour l'UI
