@@ -1,17 +1,28 @@
 <!-- src/routes/admin/+page.svelte -->
 <script lang="ts">
-  import { wallet } from '$lib/stores/wallet.js'
+  import { getWalletState } from '$lib/state/wallet.svelte.js';
   import ConfigForm from '$lib/components/admin/ConfigForm.svelte'
   import RewardDistributionForm from '$lib/components/admin/RewardDistributionForm.svelte';
+
+  let { data } = $props<{
+  data: {
+    isVerifier: boolean;
+    isAdmin: boolean;
+  }
+}>(); 
+
+  const wallet = getWalletState();
 </script>
 
+
+
 <div class="container">
-  {#if !$wallet.address}
+  {#if !wallet.address}
     <div class="unauthorized">
       <h1>Admin Panel</h1>
       <p>Please connect your wallet to access admin features.</p>
     </div>
-  {:else if !$wallet.isAdmin}
+  {:else if !wallet.isAdmin}
     <div class="unauthorized">
       <h1>Unauthorized</h1>
       <p>Only the contract owner can access admin features.</p>
@@ -19,8 +30,8 @@
   {:else}
     <div class="admin">
       <h1>Admin Panel</h1>
-      <ConfigForm account={$wallet.address} />
-      <RewardDistributionForm account={$wallet.address} />
+      <ConfigForm account={wallet.address} />
+      <RewardDistributionForm account={wallet.address} />
     </div>
   {/if}
 </div>
