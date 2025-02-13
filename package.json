@@ -4,7 +4,7 @@
 	"scripts": {
 		"dotenvx": "dotenvx",
 		"dev": "dotenvx run -- vite dev",
-		"build": "dotenvx run -- vite build",
+		"build": " vite build",
 		"db:start": "dotenvx run -- docker compose up -d",
 		"db:stop": "dotenvx run -- docker compose down",
 		"db:push": "dotenvx run -- drizzle-kit push",
