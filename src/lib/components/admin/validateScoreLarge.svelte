@@ -546,7 +546,6 @@
                 <th>Transaction Hash</th>
                 <th>Game Info</th>
                 <th>Validation</th>
-                <th>Validator Notes</th>
                 <th>Differences</th>
                 <th>Status</th>
               </tr>
@@ -586,14 +585,7 @@
                       </span>
                     {/if}
                   </td>
-                  <td class="notes">
-                    <textarea
-                      placeholder="Add validation notes..."
-                      value={validatorNotes[i] || ''}
-                      onchange={(e) => setValidatorNote(i, e.currentTarget.value)}
-                      disabled={verifying || !batchValidation[i]}
-                    ></textarea>
-                  </td>
+                  
                   <td class="differences">
                     {#if scoreDifferences[i]?.length}
                       <div class="differences-list">
@@ -734,21 +726,9 @@
     background: rgba(79, 70, 229, 0.1);
   }
 
-  .notes textarea {
-    width: 100%;
-    min-height: 60px;
-    padding: 0.5rem;
-    border-radius: 0.25rem;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: white;
-    resize: vertical;
-  }
+  
 
-  .notes textarea:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  
 
   .game-info {
     display: flex;
@@ -958,9 +938,7 @@
       border-radius: 0;
     }
 
-    .notes textarea {
-      min-height: 80px;
-    }
+   
 
     th {
       white-space: nowrap;
@@ -995,8 +973,6 @@
       flex-direction: column;
     }
 
-    .notes textarea {
-      min-height: 60px;
-    }
+    
   }
 </style>
