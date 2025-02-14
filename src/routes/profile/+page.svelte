@@ -3,24 +3,26 @@
     import { getUIState } from '$lib/state/ui.svelte.js';
     import { readContract, writeContract } from '$lib/contracts/actions.js';
     import { formatEther } from 'viem';
-    import ValidateScoreLarge from '$lib/components/admin/validateScoreLarge.svelte';
-    import type { Score } from '$lib/types.js';
+    import type { GameId, ContractScore } from '$lib/types.js';
 
+    const { data } = $props<{
+        data: {
+            isAdmin: boolean;
+            isVerifier: boolean;
+        }
+    }>();
 
-    // États globaux
     const walletState = getWalletState();
     const uiState = getUIState();
 
-    // Interface pour les scores étendus
-    interface ExtendedScore extends Score {
-        roundId: bigint;
-        game: string;
-        rewardsDistributed: boolean;
-        transactionHash: `0x${string}`;
-    }
-
     // États locaux
-    let playerScores = $state<ExtendedScore[]>([]);
+    let playerStats = $state({
+        totalGames: 0,
+        totalScore: 0n,
+        totalStake: 0n,
+        verifiedScores: 0
+    });
+    let playerScores = $state<(ContractScore & { game: GameId; roundId: bigint })[]>([]);
     let pendingWithdrawals = $state<bigint>(0n);
     let isLoading = $state(false);
     let isWithdrawing = $state(false);
@@ -29,14 +31,22 @@
     let isConnected = $derived(Boolean(walletState.address));
     
     // Liste des jeux disponibles
-    const gamesList = ['snake', 'tetris'] as const;
+    const gamesList: readonly GameId[] = ['snake', 'tetris'];
+
+    // Fonction pour calculer les statistiques
+    function updateStats() {
+        playerStats.totalGames = playerScores.length;
+        playerStats.totalScore = playerScores.reduce((acc, score) => acc + score.score, 0n);
+        playerStats.totalStake = playerScores.reduce((acc, score) => acc + score.stake, 0n);
+        playerStats.verifiedScores = playerScores.filter(score => score.verified).length;
+    }
 
     async function loadPlayerData() {
         if (!isConnected || !walletState.address) return;
         
         try {
             isLoading = true;
-            const allScores: ExtendedScore[] = [];
+            const allScores: (ContractScore & { game: GameId; roundId: bigint })[] = [];
             
             for (const game of gamesList) {
                 try {
@@ -48,7 +58,6 @@
                     }
 
                     const currentRoundId = gameConfig.currentRound;
-                    console.log(`Loading scores for ${game}, current round: ${currentRoundId}`);
                     
                     // Parcourir les rounds
                     for (let roundId = currentRoundId; roundId > 0n; roundId--) {
@@ -59,18 +68,16 @@
                                 continue;
                             }
                             
-                            const playerRoundScores = roundData.scores.filter(
-                                score => score.player.toLowerCase() === walletState.address!.toLowerCase()
-                            );
+                            const playerRoundScores = roundData.scores
+                                .filter(score => score.player.toLowerCase() === walletState.address!.toLowerCase())
+                                .map(score => ({
+                                    ...score,
+                                    game,
+                                    roundId
+                                }));
                             
                             if (playerRoundScores.length > 0) {
-                                allScores.push(...playerRoundScores.map(score => ({
-                                    ...score,
-                                    roundId,
-                                    rewardsDistributed: roundData.basic.rewardsDistributed,
-                                    transactionHash: score.transactionHash
-                                    rewardsDistributed: roundData.basic.rewardsDistributed
-                                })));
+                                allScores.push(...playerRoundScores);
                             }
                         } catch (roundError) {
                             console.log(`Skipping round ${roundId} for ${game}`);
@@ -83,8 +90,9 @@
                 }
             }
             
-            // Mise à jour des scores
+            // Mise à jour des scores et stats
             playerScores = allScores.sort((a, b) => Number(b.roundId - a.roundId));
+            updateStats();
             
             if (walletState.address) {
                 pendingWithdrawals = await readContract.getPendingWithdrawals(walletState.address);
@@ -105,7 +113,7 @@
             isWithdrawing = true;
             await writeContract.withdraw(walletState.address);
             
-            uiState.addToast('success', 'Successfully withdrawn rewards');
+            uiState.success('Successfully withdrawn rewards');
             await loadPlayerData();
             
         } catch (error) {
@@ -124,7 +132,6 @@
     });
 </script>
 
-
 <div class="profile-container">
     <div class="header">
         <h1>Player Profile</h1>
@@ -134,6 +141,30 @@
     </div>
 
     {#if isConnected}
+        <!-- Stats Section -->
+        <div class="stats-section">
+            <h2>Your Stats</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Total Games</span>
+                    <span class="stat-value">{playerStats.totalGames}</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Total Score</span>
+                    <span class="stat-value">{playerStats.totalScore.toString()}</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Total Stake</span>
+                    <span class="stat-value">{formatEther(playerStats.totalStake)} ETH</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Verified Scores</span>
+                    <span class="stat-value">{playerStats.verifiedScores}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Withdrawals Section -->
         <div class="withdrawals-section">
             <h2>Pending Withdrawals</h2>
             <div class="withdrawal-info">
@@ -148,6 +179,7 @@
             </div>
         </div>
 
+        <!-- Scores Section -->
         <div class="scores-section">
             <h2>Your Scores</h2>
             {#if isLoading}
@@ -172,9 +204,6 @@
                                 {:else}
                                     <span class="pending">Pending verification</span>
                                 {/if}
-                                {#if score.rewardsDistributed}
-                                    <span class="distributed">Rewards distributed</span>
-                                {/if}
                             </div>
                         </div>
                     {/each}
@@ -183,8 +212,6 @@
         </div>
     {/if}
 </div>
-
-
 
 <style>
     .profile-container {
@@ -200,6 +227,37 @@
     .warning {
         color: #f59e0b;
         margin-top: 0.5rem;
+    }
+
+    .stats-section {
+        margin-bottom: 2rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .stat-card {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #9ca3af;
+    }
+
+    .stat-value {
+        font-size: 1.25rem;
+        font-weight: 600;
     }
 
     .withdrawals-section {
@@ -287,10 +345,6 @@
         color: #f59e0b;
     }
 
-    .distributed {
-        color: #6366f1;
-    }
-
     .loading, .empty-state {
         text-align: center;
         padding: 2rem;
@@ -304,6 +358,10 @@
 
         .scores-grid {
             grid-template-columns: 1fr;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
         }
     }
 </style>
