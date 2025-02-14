@@ -59,6 +59,7 @@
       loading = true;
       validationState.setLoading(true);
 
+      // 1. Obtenir d'abord la configuration et les données du smart contract
       const gameConfig = await readContract.getGameConfig(selectedGame);
       if (!gameConfig) throw new Error('Game config not found');
 
@@ -67,20 +68,46 @@
         selectedGame
       ) as ContractRoundView;
 
-      contractRound = roundData;
+      // 2. Filtrer les scores non vérifiés
+      const unverifiedScores = roundData.scores.filter(s => !s.verified);
 
-      const enrichedScores = await enrichScoresWithDBData(
-        roundData.scores.filter(s => !s.verified)
-      );
+      if (unverifiedScores.length > 0) {
+        // 3. Faire un seul appel à la DB pour enrichir les données
+        const dbScores = await ScoreService.getScores(
+          selectedGame, 
+          gameConfig.currentRound.toString()
+        );
 
-      currentRound = {
-        ...roundData,
-        scores: enrichedScores
-      };
-      pendingScores = enrichedScores;
+        const enrichedScores = unverifiedScores.map(contractScore => {
+          const dbScore = dbScores.find((s: Score) => s.scoreHash === contractScore.scoreHash);
+          return {
+            ...contractScore,
+            transactionHash: dbScore?.transactionHash ?? '0x0',
+            level: dbScore?.level,
+            lines: dbScore?.lines,
+            moves_count: dbScore?.moves_count,
+            moves_hash: dbScore?.moves_hash
+          };
+        });
+
+        currentRound = {
+          ...roundData,
+          scores: enrichedScores
+        };
+        pendingScores = enrichedScores;
+      } else {
+        currentRound = {
+          ...roundData,
+          scores: roundData.scores.map(score => ({
+            ...score,
+            transactionHash: '0x0' 
+          }))
+        };
+        pendingScores = [];
+      }
 
       validationState.setCurrentRound({...currentRound});
-      validationState.setPendingScores([...enrichedScores]);
+      validationState.setPendingScores([...pendingScores]);
 
     } catch (error) {
       console.error('Failed to load pending scores:', error);

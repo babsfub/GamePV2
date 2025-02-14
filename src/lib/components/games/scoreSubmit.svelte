@@ -140,7 +140,7 @@ const {
       await submitToDB(contractScore, tx, receipt, initialGameState);
 
       // Mettre à jour l'UI
-      await onSubmit();
+      await onSubmit(selectedStake);
       uiState.success(`Score submitted! TX: ${tx}`);
 
     } catch (err) {

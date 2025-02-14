@@ -57,17 +57,27 @@ export class ScoreService {
   }
 
   static async getScores(gameId: GameId, roundId?: string) {
-    const params = new URLSearchParams();
-    params.append('gameId', gameId);
-    if (roundId) params.append('roundId', roundId);
+    try {
+        const params = new URLSearchParams();
+        params.append('gameId', gameId);
+        if (roundId) params.append('roundId', roundId);
 
-    const response = await fetch(`/api/games?${params}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch scores');
+        console.log('Fetching scores with params:', params.toString()); // Pour debug
+
+        const response = await fetch(`/api/games?${params}`);
+        
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Failed to fetch scores: ${error}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('ScoreService error:', error);
+        throw error;
     }
-
-    return response.json();
-  }
+}
 
   static async verifyScores({
     gameId,

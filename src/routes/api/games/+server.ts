@@ -2,25 +2,29 @@
 import { json } from '@sveltejs/kit';
 import { eq, desc } from 'drizzle-orm';
 import { db } from '$lib/server/db/index.js';
-import { tetrisGames, snakeGames } from '$lib/server/db/schema.js';
+import { tetrisGames, snakeGames, type TetrisGame, type SnakeGame } from '$lib/server/db/schema.js';
 import type { GameId } from '$lib/types.js';
 
 import type { RequestEvent } from '@sveltejs/kit';
 
 export async function GET({ url }: RequestEvent) {
-    const gameId = url.searchParams.get('gameId') as GameId;
-    const roundId = url.searchParams.get('roundId');
-    
-    try {
-        const table = gameId === 'tetris' ? tetrisGames : snakeGames;
-        const scores = await db.select().from(table)
-            .where(roundId ? eq(table.round_id, Number(roundId)) : undefined)
-            .orderBy(desc(table.score));
-        
-        return json(scores);
-    } catch (error) {
-        return json({ error: 'Failed to fetch scores' }, { status: 500 });
-    }
+  const gameId = url.searchParams.get('gameId') as GameId;
+  const roundId = url.searchParams.get('roundId');
+  
+  try {
+      const table: typeof tetrisGames | typeof snakeGames = gameId === 'tetris' ? tetrisGames : snakeGames;
+      let query: any = db.select().from(table);
+      
+      if (roundId) {
+          query = query.where(eq(table.round_id, Number(roundId)));
+      }
+      
+      const scores = await query;
+      // Retourner directement le tableau de scores
+      return json(scores);
+  } catch (error) {
+      return json([]);
+  }
 }
 
 export async function POST({ request }: RequestEvent) {

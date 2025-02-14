@@ -3,7 +3,9 @@
     import { getUIState } from '$lib/state/ui.svelte.js';
     import { readContract, writeContract } from '$lib/contracts/actions.js';
     import { formatEther } from 'viem';
+    import ValidateScoreLarge from '$lib/components/admin/validateScoreLarge.svelte';
     import type { Score } from '$lib/types.js';
+
 
     // États globaux
     const walletState = getWalletState();
@@ -14,6 +16,7 @@
         roundId: bigint;
         game: string;
         rewardsDistributed: boolean;
+        transactionHash: `0x${string}`;
     }
 
     // États locaux
@@ -64,7 +67,8 @@
                                 allScores.push(...playerRoundScores.map(score => ({
                                     ...score,
                                     roundId,
-                                    game,
+                                    rewardsDistributed: roundData.basic.rewardsDistributed,
+                                    transactionHash: score.transactionHash
                                     rewardsDistributed: roundData.basic.rewardsDistributed
                                 })));
                             }
@@ -120,7 +124,6 @@
     });
 </script>
 
-<!-- Le template reste le même -->
 
 <div class="profile-container">
     <div class="header">

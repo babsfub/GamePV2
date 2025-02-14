@@ -7,12 +7,14 @@
   import ScoreSubmit from '$lib/components/games/scoreSubmit.svelte';
   import init, { TetrisEngine } from '$lib/games/tetris/pkg/tetris_engine.js';
   import LeaderBoard from '$lib/components/LeaderBoard.svelte';
-  import ValidateScore from '$lib/components/admin/validateScore.svelte';
-  import type { TetrisState, ContractRoundView, RoundView } from '$lib/types.js';
+  import ValidateScore from '$lib/components/admin/validateScoreLarge.svelte';
+  import type { TetrisState, ContractRoundView, RoundView, Score } from '$lib/types.js';
+  import type { TetrisGame } from '$lib/server/db/schema.js';
   import { getWalletState } from '$lib/state/wallet.svelte.js';
   import { getGameState } from '$lib/state/game.svelte.js';
   import { getUIState } from '$lib/state/ui.svelte.js';
   import { ScoreService } from '$lib/utils/scoreServices.js';
+  import { Buffer } from 'buffer';
   
   // Props et Services
   let { data } = $props<{
@@ -65,46 +67,60 @@
       '#FFA500'  // Z
   ];
   // Fonction de mise à jour des données du jeu
-  const updateGameData = async () => {
-    try {
-      const config = await contractActions.read.getGameConfig('tetris');
-      gameState.setConfig('tetris', config);
-  
-      if (config?.active) {
-        const roundData = await contractActions.read.getRoundData(
-          config.currentRound, 
-          'tetris'
-        ) as ContractRoundView;
-        
-        // Garder une copie des données du contrat
-        contractRound = roundData;
-        
-        // Enrichir avec les données de la DB
-        const dbScores = await fetch('/api/games?gameId=tetris').then(r => r.json());
+  async function updateGameData() {
+  try {
+    const config = await contractActions.read.getGameConfig('tetris');
+    gameState.setConfig('tetris', config);
+
+    if (config?.active) {
+      const roundData = await contractActions.read.getRoundData(
+        config.currentRound, 
+        'tetris'
+      ) as ContractRoundView;
+      
+      if (roundData.scores.length > 0) {
+        // Utiliser le type TetrisGame inféré de Drizzle
+        const response = await fetch(`/api/games?gameId=tetris&roundId=${config.currentRound}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch DB data');
+        }
+        const dbScores = await response.json() as TetrisGame[];
         
         currentRound = {
           ...roundData,
           scores: roundData.scores.map(contractScore => {
-            const dbScore = dbScores.find((s: { scoreHash: string }) => s.scoreHash === contractScore.scoreHash);
+            const dbScore = dbScores.find(
+              (s) => s.score_hash === contractScore.scoreHash
+            );
+            
             return {
               ...contractScore,
-              transactionHash: dbScore?.transactionHash ?? '0x0',
-              level: dbScore?.level,
-              lines: dbScore?.lines,
-              moves_count: dbScore?.moves_count,
-              moves_hash: dbScore?.moves_hash
+              transactionHash: dbScore?.transaction_hash as `0x${string}` ?? '0x0',
+              // Convertir les champs de la DB en types corrects
+              level: dbScore ? 
+                BigInt(dbScore.score) : // Utiliser le score comme level par défaut
+                BigInt(0),
+              lines: 0, // Ces valeurs ne sont pas dans le schéma DB
+              moves_count: 0,
+              moves_hash: dbScore?.db_hash ?? ''
             };
           })
         };
-
-        gameState.setRound('tetris', currentRound);
+      } else {
+        currentRound = {
+          ...roundData,
+          scores: []
+        };
       }
-    } catch (err) {
-      console.error('Error updating game data:', err);
-      gameState.setConfig('tetris', null);
-      gameState.setRound('tetris', null);
+
+      gameState.setRound('tetris', currentRound);
     }
-  };
+  } catch (err) {
+    console.error('Error updating game data:', err);
+    gameState.setConfig('tetris', null);
+    gameState.setRound('tetris', null);
+  }
+}
 
 
   
