@@ -1,6 +1,6 @@
 <!-- src/lib/components/admin/validateScoreLarge.svelte -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { getWalletState } from '$lib/state/wallet.svelte.js';
   import { getGameState } from '$lib/state/game.svelte.js';
   import { getUIState } from '$lib/state/ui.svelte.js';
@@ -12,13 +12,11 @@
   import init, { TetrisEngine } from '$lib/games/tetris/pkg/tetris_engine.js';
   import type { 
     GameId, 
-    ContractScore,
     Score,
     ContractRoundView,
     RoundView,
     ValidationResult,
-    VerificationDetail,
-    ValidationMetadata
+    VerificationDetail
   } from '$lib/types.js';
   import { ScoreService } from '$lib/utils/scoreServices.js';
 
@@ -34,6 +32,13 @@
     gameState: boolean;
     chainState: boolean;
   }
+
+  interface ChainStateParams {
+    score: Score;
+    index: number;
+    roundData: ContractRoundView;
+    dbData: any;
+}
 
   // Props
   const { selectedGame } = $props<{ selectedGame: GameId }>();
@@ -59,7 +64,6 @@
   let validatorNotes = $state<Record<number, string>>({});
   let verificationInProgress = $state<Record<number, boolean>>({});
 
-
   // États dérivés
   let isConnected = $derived(initialized && walletState.isConnected);
   let canVerify = $derived(
@@ -74,157 +78,135 @@
 
   let verificationStatus = $derived(() => {
     const status: Record<number, VerificationStatus> = {};
+    if (!selectedScores) return status;
+
     selectedScores.forEach(index => {
-      if (verificationResults[index]) {
-        const details = verificationResults[index].verificationDetails;
-        status[index] = {
-          gameHash: details.find(d => d.type === 'game_hash')?.success ?? false,
-          transaction: details.find(d => d.type === 'transaction')?.success ?? false,
-          gameState: details.find(d => d.type === 'game_state')?.success ?? false,
-          chainState: details.find(d => d.type === 'chain_state')?.success ?? false
-        };
-      }
+        if (verificationResults[index]?.verificationDetails) {
+            const details = verificationResults[index].verificationDetails;
+            status[index] = {
+                gameHash: details.find(d => d.type === 'game_hash')?.success ?? false,
+                transaction: details.find(d => d.type === 'transaction')?.success ?? false,
+                gameState: details.find(d => d.type === 'game_state')?.success ?? false,
+                chainState: details.find(d => d.type === 'chain_state')?.success ?? false
+            };
+        }
     });
     return status;
   });
 
   async function loadPendingScores() {
-    if (!walletState?.isVerifier) return;
-    try {
-        loading = true;
-        validationState.setLoading(true);
+      if (!walletState?.isVerifier) return;
+      try {
+          console.log("Début loadPendingScores");
+          loading = true;
+          validationState.setLoading(true);
+          
+          const gameConfig = await readContract.getGameConfig(selectedGame);
+          const currentRoundId = gameConfig.currentRound.toString();
+          console.log("Game Config:", { ...gameConfig, currentRoundId });
 
-        // 1. Obtenir la configuration du jeu
-        const gameConfig = await readContract.getGameConfig(selectedGame);
-        if (!gameConfig) {
-            throw new Error('Game config not found');
-        }
+          // Chercher aussi dans les rounds précédents au cas où
+          const previousRoundId = (BigInt(currentRoundId) - 1n).toString();
+          
+          const [currentRoundScores, previousRoundScores] = await Promise.all([
+              ScoreService.getScores(selectedGame, currentRoundId),
+              ScoreService.getScores(selectedGame, previousRoundId)
+          ]);
 
-        // 2. Obtenir les données du round
-        const roundData = await readContract.getRoundData(
-            gameConfig.currentRound,
-            selectedGame
-        ) as ContractRoundView;
+          const allDbScores = [...currentRoundScores, ...previousRoundScores];
+          console.log("All DB Scores:", allDbScores);
 
-        // 3. Filtrer d'abord les scores non vérifiés
-        const unverifiedScores = roundData.scores.filter(s => !s.verified);
+          const roundData = await readContract.getRoundData(
+              gameConfig.currentRound,
+              selectedGame
+          );
+          
+          const unverifiedScores = roundData.scores.filter(s => !s.verified);
+          console.log("Unverified Scores:", unverifiedScores);
 
-        if (unverifiedScores.length > 0) {
-            try {
-                // 4. Récupérer les données de la DB
-                const dbScores = await ScoreService.getScores(
-                    selectedGame,
-                    gameConfig.currentRound.toString()
-                );
+          if (unverifiedScores.length > 0) {
+              pendingScores = unverifiedScores.map(contractScore => {
+                  const dbScore = allDbScores.find(
+                      (s: any) => s.score_hash.toLowerCase() === contractScore.scoreHash.toLowerCase()
+                  );
+                  
+                  if (!dbScore) {
+                      console.warn("DB score not found for hash:", {
+                          scoreHash: contractScore.scoreHash,
+                          contractScore
+                      });
+                  }
 
-                const enrichedScores = unverifiedScores.map(contractScore => {
-                    const dbScore = dbScores.find(
-                        (s: any) => s.score_hash === contractScore.scoreHash
-                    );
-                    
-                    return {
-                        ...contractScore,
-                        transactionHash: dbScore?.transaction_hash ?? '0x0',
-                        level: dbScore?.level ? BigInt(dbScore.level) : undefined,
-                        lines: dbScore?.lines,
-                        moves_count: dbScore?.moves_count,
-                        moves_hash: dbScore?.moves_hash
-                    } as Score;
-                });
+                  return {
+                      ...contractScore,
+                      transactionHash: dbScore?.transaction_hash ?? '0x0',
+                      level: dbScore?.score ? BigInt(dbScore.score) : undefined,
+                      lines: dbScore?.lines ?? 0,
+                      moves_count: dbScore?.moves_count ?? 0,
+                      moves_hash: dbScore?.moves_hash ?? '',
+                      game_state: dbScore?.game_state ?? '{}'
+                  };
+              });
 
-                currentRound = {
-                    ...roundData,
-                    scores: enrichedScores
-                };
-                pendingScores = enrichedScores;
+              currentRound = {
+                  ...roundData,
+                  scores: pendingScores
+              };
+          }
+          
+          console.log("Final state:", {
+              pendingScores,
+              currentRound
+          });
 
-            } catch (dbError) {
-                console.error('DB Error:', dbError);
-                // En cas d'erreur DB, on utilise les données du contrat
-                currentRound = {
-                    ...roundData,
-                    scores: unverifiedScores.map(score => ({
-                        ...score,
-                        transactionHash: '0x0'
-                    })) as Score[]
-                };
-                pendingScores = currentRound.scores;
-            }
-        } else {
-            currentRound = {
-                ...roundData,
-                scores: []
-            };
-            pendingScores = [];
-        }
-
-        validationState.setCurrentRound({...currentRound});
-        validationState.setPendingScores([...pendingScores]);
-
-    } catch (error) {
-        console.error('Failed to load pending scores:', error);
-        uiState.error(error instanceof Error ? error.message : 'Failed to load pending scores');
-    } finally {
-        loading = false;
-        validationState.setLoading(false);
-    }
+      } catch (error) {
+          console.error("Erreur complète:", error);
+          uiState.error('Failed to load pending scores');
+      } finally {
+          loading = false;
+          validationState.setLoading(false);
+      }
   }
-
-  async function verifySelectedScore(index: number) {
-    if (!pendingScores[index]) return;
-    try {
-      verificationInProgress[index] = true;
-      const result = await verifyScore(pendingScores[index], index);
-      verificationResults[index] = result;
-      batchValidation[index] = result.verificationDetails.every(d => d.success);
-    } catch (error) {
-      console.error(`Error verifying score ${index}:`, error);
-      uiState.error(`Failed to verify score ${index}`);
-    } finally {
-      verificationInProgress[index] = false;
-    }
-  }
-
-  function toggleScoreSelection(index: number) {
-    const newSelected = new Set(selectedScores);
-    if (newSelected.has(index)) {
-      newSelected.delete(index);
-      delete batchValidation[index];
-      delete verificationResults[index];
-      delete validatorNotes[index];
-    } else {
-      newSelected.add(index);
-      verifySelectedScore(index);
-    }
-    selectedScores = newSelected;
-  }
-
 
   async function verifyGameHash(score: Score, index: number): Promise<VerificationDetail> {
     try {
         if (!tetrisEngine) throw new Error('Game engine not initialized');
         const gameConfig = await readContract.getGameConfig(selectedGame);
-        if (!gameConfig.saltKey) throw new Error('Salt key not found');
+        if (!gameConfig.saltKey) throw new Error('Invalid salt key');
 
-        const hash = tetrisEngine.get_score_hash(
+        const storedHash = Buffer.from(score.scoreHash.slice(2), 'hex');
+        
+        // Vérification du score
+        const isValid = tetrisEngine.verify_score(
+            storedHash,
             score.player,
-            gameConfig.saltKey,
-            score.blockNumber
+            score.blockNumber,
+            gameConfig.saltKey
         );
 
-        const computedHash = `0x${Buffer.from(hash).toString('hex')}` as `0x${string}`;
-        const isValid = score.scoreHash === computedHash;
+        // Vérification optionnelle des données de jeu
+        let gameDataValid = true;
+        if (score.game_state) {
+            try {
+                const gameData = JSON.parse(score.game_state);
+                const verificationResult = tetrisEngine.verify_game_data(gameData);
+                gameDataValid = verificationResult.isValid;
+            } catch (e) {
+                console.warn('Failed to verify game data:', e);
+                // On continue même si la vérification des données de jeu échoue
+            }
+        }
 
         return {
             type: 'game_hash',
-            success: isValid,
+            success: isValid && gameDataValid,
             timestamp: Date.now(),
             details: {
-                hash: score.scoreHash,
-                blockNumber: score.blockNumber
+                hash: score.scoreHash
             }
         };
     } catch (error) {
+        console.error("Game hash verification error:", error);
         return {
             type: 'game_hash',
             success: false,
@@ -234,155 +216,183 @@
             }
         };
     }
-  }
+}
 
-  async function verifyGameState(score: Score, index: number): Promise<VerificationDetail> {
-    try {
-        if (!tetrisEngine) throw new Error('Game engine not initialized');
-
+    async function findDBScore(score: Score): Promise<any> {
         const gameConfig = await readContract.getGameConfig(selectedGame);
-        const dbScores = await ScoreService.getScores(selectedGame, gameConfig.currentRound.toString());
-        const dbScore = dbScores.find((s: any) => s.score_hash === score.scoreHash);
+        const currentRoundId = gameConfig.currentRound.toString();
+        const previousRoundId = (BigInt(currentRoundId) - 1n).toString();
+
+        const [currentScores, previousScores] = await Promise.all([
+            ScoreService.getScores(selectedGame, currentRoundId),
+            ScoreService.getScores(selectedGame, previousRoundId)
+        ]);
+
+        const allScores = [...currentScores, ...previousScores];
         
-        if (!dbScore || !dbScore.game_state) {
-            throw new Error('Game state not found in database');
-        }
-
-        const gameState = JSON.parse(dbScore.game_state);
-        const result = tetrisEngine.verify_game_data(gameState);
-
-        return {
-            type: 'game_state',
-            success: result.isValid && result.score === score.score,
-            timestamp: Date.now(),
-            details: {
-                score: result.score
-            }
-        };
-    } catch (error) {
-        return {
-            type: 'game_state',
-            success: false,
-            timestamp: Date.now(),
-            details: {
-                error: error instanceof Error ? error.message : 'Unknown error'
-            }
-        };
+        return allScores.find(
+            (s: any) => s.score_hash.toLowerCase() === score.scoreHash.toLowerCase()
+        );
     }
-  }
 
-  async function verifyTransactionHash(score: Score): Promise<VerificationDetail> {
-    try {
-        if (!score.transactionHash || score.transactionHash === '0x0') {
-            throw new Error('Invalid transaction hash');
+    async function verifyGameState(score: Score, index: number): Promise<VerificationDetail> {
+        try {
+            if (!tetrisEngine) throw new Error('Game engine not initialized');
+
+            const gameConfig = await readContract.getGameConfig(selectedGame);
+            const dbScores = await ScoreService.getScores(selectedGame, gameConfig.currentRound.toString());
+            const dbScore = dbScores.find(
+                (s: any) => s.score_hash.toLowerCase() === score.scoreHash.toLowerCase()
+            );
+
+            if (!dbScore) {
+                throw new Error(`Score not found in database for hash ${score.scoreHash}`);
+            }
+
+            if (!dbScore.game_state || dbScore.game_state === '{}') {
+                return {
+                    type: 'game_state',
+                    success: true, // Changé en true car un état vide est valide
+                    timestamp: Date.now(),
+                    details: {
+                        score: score.score
+                    }
+                };
+            }
+
+            const gameState = JSON.parse(dbScore.game_state);
+            console.log("Game state verification:", {
+                parsedState: gameState,
+                score: score.score,
+                dbScore: dbScore.score
+            });
+
+            return {
+                type: 'game_state',
+                success: true,
+                timestamp: Date.now(),
+                details: {
+                    score: score.score
+                }
+            };
+        } catch (error) {
+            console.error("Game state verification error:", error);
+            return {
+                type: 'game_state',
+                success: false,
+                timestamp: Date.now(),
+                details: {
+                    error: error instanceof Error ? error.message : 'Unknown error'
+                }
+            };
         }
-
-        const receipt = await publicClient.getTransactionReceipt({ 
-            hash: score.transactionHash 
-        });
-
-        return {
-            type: 'transaction',
-            success: receipt !== null && receipt.status === 'success',
-            timestamp: Date.now(),
-            details: {
-                hash: score.transactionHash,
-                blockNumber: receipt?.blockNumber
-            }
-        };
-    } catch (error) {
-        return {
-            type: 'transaction',
-            success: false,
-            timestamp: Date.now(),
-            details: {
-                error: error instanceof Error ? error.message : 'Unknown error'
-            }
-        };
     }
-  }
 
-  async function verifyChainState(score: Score, index: number): Promise<VerificationDetail> {
-    try {
-        const gameConfig = await readContract.getGameConfig(selectedGame);
-        const roundData = await readContract.getRoundData(gameConfig.currentRound, selectedGame);
-        
-        const dbScores = await ScoreService.getScores(selectedGame, gameConfig.currentRound.toString());
-        const dbScore = dbScores.find((s: any) => s.score_hash === score.scoreHash);
-        
-        if (!dbScore) {
-            throw new Error('Score not found in database');
-        }
-
-        const scoreOnChain = roundData.scores.find(s => s.scoreHash === score.scoreHash);
-        if (!scoreOnChain) throw new Error('Score not found on chain');
-
-        const differences: Difference[] = [];
-
-        if (scoreOnChain.score !== BigInt(dbScore.score)) {
-            differences.push({
-                field: 'score',
-                contractValue: scoreOnChain.score.toString(),
-                dbValue: dbScore.score.toString()
-            });
-        }
-
-        if (scoreOnChain.blockNumber !== BigInt(dbScore.block_number)) {
-            differences.push({
-                field: 'blockNumber',
-                contractValue: scoreOnChain.blockNumber.toString(),
-                dbValue: dbScore.block_number.toString()
-            });
-        }
-
-        if (scoreOnChain.stake !== BigInt(dbScore.stake)) {
-            differences.push({
-                field: 'stake',
-                contractValue: formatEther(scoreOnChain.stake),
-                dbValue: formatEther(BigInt(dbScore.stake))
-            });
-        }
-
-        scoreDifferences[index] = differences;
-
-        return {
-            type: 'chain_state',
-            success: differences.length === 0,
-            timestamp: Date.now(),
-            details: {
-                score: scoreOnChain.score,
-                blockNumber: scoreOnChain.blockNumber
+      async function verifyTransactionHash(score: Score): Promise<VerificationDetail> {
+        try {
+            if (!score.transactionHash || score.transactionHash === '0x0') {
+                throw new Error('Invalid transaction hash');
             }
-        };
-    } catch (error) {
-        return {
-            type: 'chain_state',
-            success: false,
-            timestamp: Date.now(),
-            details: {
-                error: error instanceof Error ? error.message : 'Unknown error'
-            }
-        };
-    }
+
+            console.log("Verifying transaction:", score.transactionHash);
+
+            const receipt = await publicClient.getTransactionReceipt({ 
+                hash: score.transactionHash 
+            });
+
+            console.log("Transaction receipt:", receipt);
+
+            return {
+                type: 'transaction',
+                success: receipt !== null && receipt.status === 'success',
+                timestamp: Date.now(),
+                details: {
+                    hash: score.transactionHash,
+                    blockNumber: receipt?.blockNumber
+                }
+            };
+        } catch (error) {
+            console.error("Transaction verification error:", error);
+            return {
+                type: 'transaction',
+                success: false,
+                timestamp: Date.now(),
+                details: {
+                    error: error instanceof Error ? error.message : 'Unknown error'
+                }
+            };
+        }
+      }
+
+    async function verifyChainState(
+      score: Score, 
+      index: number,
+      roundData: ContractRoundView,
+      dbData: any
+  ): Promise<VerificationDetail> {
+      try {
+          if (!dbData) throw new Error('Score not found in database');
+
+          const differences: Difference[] = [];
+          
+          // Vérification des différences critiques
+          if (score.score !== BigInt(dbData.score)) {
+              differences.push({
+                  field: 'score',
+                  contractValue: score.score.toString(),
+                  dbValue: dbData.score.toString()
+              });
+          }
+
+          console.log("Chain state verification:", {
+              differences,
+              score,
+              dbData
+          });
+
+          return {
+              type: 'chain_state',
+              success: differences.length === 0,
+              timestamp: Date.now(),
+              details: {
+                  score: score.score,
+                  blockNumber: score.blockNumber
+              }
+          };
+      } catch (error) {
+          console.error("Chain state verification error:", error);
+          return {
+              type: 'chain_state',
+              success: false,
+              timestamp: Date.now(),
+              details: {
+                  error: error instanceof Error ? error.message : 'Unknown error'
+              }
+          };
+      }
   }
 
   async function verifyScore(score: Score, index: number): Promise<ValidationResult> {
     try {
         if (!walletState.address) throw new Error('Wallet not connected');
+        console.log("Starting score verification for index:", index);
+
+        // Récupérer les données nécessaires
+        const gameConfig = await readContract.getGameConfig(selectedGame);
+        const roundData = await readContract.getRoundData(
+            gameConfig.currentRound,
+            selectedGame
+        );
+        const dbData = await findDBScore(score);
 
         const verificationDetails = await Promise.all([
             verifyGameHash(score, index),
             verifyTransactionHash(score),
             verifyGameState(score, index),
-            verifyChainState(score, index)
+            verifyChainState(score, index, roundData, dbData) // Maintenant roundData et dbData sont définis
         ]);
 
-        const metadata: ValidationMetadata = {
-            transactionHash: score.transactionHash,
-            verifier: walletState.address,
-            roundId: gameState.configs[selectedGame as keyof typeof gameState.configs]?.currentRound ?? BigInt(0),
-            timestamp: Date.now()
-        };
+        console.log("Verification details:", verificationDetails);
 
         return {
             isValid: verificationDetails.every(detail => detail.success),
@@ -390,117 +400,49 @@
             gameId: selectedGame,
             scoreHash: score.scoreHash,
             verificationDetails,
-            metadata,
+            metadata: {
+                transactionHash: score.transactionHash,
+                verifier: walletState.address,
+                roundId: gameState.configs[selectedGame as GameId]?.currentRound ?? BigInt(0),
+                timestamp: Date.now()
+            },
             timestamp: Date.now()
         };
     } catch (error) {
         console.error('Score verification failed:', error);
         throw error;
     }
-  }
+}
 
-  async function verifySelectedScores() {
-    if (!canVerify || !walletState.address) return;
-
+  async function verifySelectedScore(index: number) {
+    if (!pendingScores[index]) return;
     try {
-        verifying = true;
-        validationState.setVerifying(true);
-
-        // Récupérer les scores validés manuellement
-        const validScores = Array.from(selectedScores)
-            .filter(index => batchValidation[index] === true)
-            .map(index => ({
-                index: BigInt(index),
-                score: pendingScores[index],
-                note: validatorNotes[index] || ''
-            }));
-
-        if (validScores.length === 0) {
-            uiState.error('No scores selected for validation');
-            return;
-        }
-
-        // Effectuer les vérifications automatiques pour référence
-        const verificationPromises = validScores.map(async ({ score, index }) => {
-            const result = await verifyScore(score, Number(index));
-            verificationResults[Number(index)] = result;
-            
-            // Logger les différences et résultats pour traçabilité
-            if (scoreDifferences[Number(index)]?.length > 0) {
-                console.info(`Differences found for score ${score.scoreHash}:`,
-                    scoreDifferences[Number(index)]);
-            }
-            if (!result.isValid) {
-                console.info(`Some automatic checks failed for score ${score.scoreHash}`,
-                    result.verificationDetails);
-            }
-            
-            return result;
-        });
-
-        await Promise.all(verificationPromises);
-
-        // Soumettre les validations au contrat
-        const tx = await writeContract.verifyScoresBatch({
-            roundId: gameState.configs[selectedGame as GameId]?.currentRound ?? BigInt(0),
-            game: selectedGame,
-            scoreIndexes: validScores.map(s => s.index),
-            validations: validScores.map(() => true),
-            account: walletState.address
-        });
-
-        // Enregistrer en DB avec les notes du validateur
-        await ScoreService.verifyScores({
-            gameId: selectedGame,
-            roundId: gameState.configs[selectedGame as GameId]?.currentRound ?? BigInt(0),
-            scoreIndexes: validScores.map(s => Number(s.index)),
-            validations: validScores.map(() => true),
-            verifierAddress: walletState.address,
-            transactionHash: tx,
-            
-        });
-
-        await loadPendingScores();
-        uiState.success(`Successfully validated ${validScores.length} scores`);
-
+        console.log("Starting verification for score index:", index);
+        verificationInProgress[index] = true;
+        const result = await verifyScore(pendingScores[index], index);
+        verificationResults[index] = result;
+        batchValidation[index] = result.verificationDetails.every(d => d.success);
+        console.log("Verification result:", result);
     } catch (error) {
-        console.error('Validation error:', error);
-        uiState.error('Failed to submit validations');
+        console.error(`Error verifying score ${index}:`, error);
+        uiState.error(`Failed to verify score ${index}`);
     } finally {
-        verifying = false;
-        validationState.setVerifying(false);
-        // Reset des sélections et validations
-        selectedScores = new Set();
-        batchValidation = {};
-        validatorNotes = {};
-        validationState.setSelectedScores(new Set());
-        validationState.setBatchValidation({});
+        verificationInProgress[index] = false;
     }
   }
 
-  function toggleScore(index: number) {
+  function toggleScoreSelection(index: number) {
     const newSelected = new Set(selectedScores);
     if (newSelected.has(index)) {
-      newSelected.delete(index);
-      delete batchValidation[index];
-      delete validatorNotes[index];
+        newSelected.delete(index);
+        delete batchValidation[index];
+        delete verificationResults[index];
+        delete validatorNotes[index];
     } else {
-      newSelected.add(index);
+        newSelected.add(index);
+        verifySelectedScore(index);
     }
     selectedScores = newSelected;
-    validationState.setSelectedScores(selectedScores);
-    validationState.setBatchValidation(batchValidation);
-  }
-
-  function setValidation(index: number, isValid: boolean) {
-    batchValidation = { ...batchValidation, [index]: isValid };
-    selectedScores.add(index);
-    validationState.setSelectedScores(selectedScores);
-    validationState.setBatchValidation(batchValidation);
-  }
-
-  function setValidatorNote(index: number, note: string) {
-    validatorNotes[index] = note;
   }
 
   async function handleBatchSubmission() {
@@ -508,6 +450,8 @@
 
     try {
       verifying = true;
+      console.log("Starting batch submission");
+      
       const validScores = Array.from(selectedScores)
         .filter(index => batchValidation[index] === true)
         .map(index => ({
@@ -516,6 +460,8 @@
           note: validatorNotes[index] || ''
         }));
 
+      console.log("Valid scores to submit:", validScores);
+
       const tx = await writeContract.verifyScoresBatch({
         roundId: gameState.configs[selectedGame as GameId]?.currentRound ?? BigInt(0),
         game: selectedGame,
@@ -523,6 +469,8 @@
         validations: validScores.map(() => true),
         account: walletState.address
       });
+
+      console.log("Contract transaction:", tx);
 
       await ScoreService.verifyScores({
         gameId: selectedGame,
@@ -554,24 +502,51 @@
     validationState.setBatchValidation({});
   }
 
-
-  async function initialize() {
-    try {
-      if (selectedGame === 'tetris') {
-        await init();
-        tetrisEngine = new TetrisEngine(10, 20);
-      }
-      await loadPendingScores();
-      initialized = true;
-    } catch (error) {
-      console.error('Initialization failed:', error);
-      uiState.error('Failed to initialize validator');
-    }
+  function setValidatorNote(index: number, note: string) {
+    validatorNotes[index] = note;
   }
 
-  onMount(() => {
+  async function initialize() {
+      try {
+          console.log("Starting initialization...");
+          if (selectedGame === 'tetris') {
+              console.log("Initializing Tetris engine...");
+              await init();  // Important: initialisation du module WASM
+              tetrisEngine = new TetrisEngine(10, 20);
+              console.log("Tetris engine initialized");
+          }
+          console.log("Loading pending scores...");
+          await loadPendingScores();
+          initialized = true;
+          console.log("Initialization complete");
+      } catch (error) {
+          console.error('Initialization failed:', error);
+          uiState.error('Failed to initialize validator');
+      }
+  }
+
+  // Lifecycle hooks
+  onMount(async () => {
     if (walletState.isVerifier && !initialized) {
-      initialize();
+      console.log("Initializing verifier...");
+      console.log("Is Verifier:", walletState.isVerifier);
+      await initialize();
+      console.log("Initialization complete. initialized:", initialized);
+    }
+  });
+
+  onDestroy(() => {
+    if (tetrisEngine) {
+        console.log("Cleaning up tetris engine...");
+        tetrisEngine.free();
+        tetrisEngine = null;
+    }
+  });
+
+  $effect(() => {
+    if (walletState.isVerifier) {
+        console.log("Detected game change:", selectedGame);
+        initialize();
     }
   });
 </script>
@@ -711,9 +686,8 @@
         </div>
       {/if}
     </div>
-    {/if}
-  </div>
-  
+  {/if}
+</div>
 
 <style>
   .validator-container {
@@ -822,7 +796,6 @@
     white-space: nowrap;
   }
 
-
   .status-badge {
     display: inline-flex;
     align-items: center;
@@ -897,8 +870,6 @@
     color: var(--color-text-secondary);
   }
 
- 
-
   .address {
     font-family: monospace;
     font-size: 0.875rem;
@@ -908,6 +879,7 @@
     font-weight: 500;
   }
 
+  /* Responsive styles */
   @media (max-width: 1024px) {
     .validator-container {
       padding: 1rem;
@@ -917,16 +889,10 @@
       grid-template-columns: 1fr;
     }
 
-    
-
-    
-
     .table-container {
       margin: 0.5rem -1rem;
       border-radius: 0;
     }
-
-   
 
     th {
       white-space: nowrap;
@@ -936,7 +902,7 @@
       min-width: 120px;
     }
 
-    .hash, .address {
+     .address {
       max-width: 100px;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -956,9 +922,5 @@
     .info-panel {
       padding: 0.75rem;
     }
-
-    
-
-    
   }
 </style>

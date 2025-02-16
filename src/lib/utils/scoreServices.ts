@@ -22,8 +22,8 @@ export class ScoreService {
     blockNumber: bigint,
     stake: bigint,
     scoreHash: Hash,
-    transactionHash: Hash,
-    contractHash?: Hash,
+    transactionHash: `0x${string}`,
+    contractHash?: `0x${string}`,
     roundId: bigint,
     transactionBlockNumber?: bigint,
     transactionTimestamp?: Date
@@ -56,28 +56,41 @@ export class ScoreService {
     return response.json();
   }
 
-  static async getScores(gameId: GameId, roundId?: string) {
+  static async getScores(gameId: GameId, roundId: string): Promise<any[]> {
     try {
-        const params = new URLSearchParams();
-        params.append('gameId', gameId);
-        if (roundId) params.append('roundId', roundId);
-
-        console.log('Fetching scores with params:', params.toString()); // Pour debug
-
-        const response = await fetch(`/api/games?${params}`);
-        
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`Failed to fetch scores: ${error}`);
-        }
-
-        const data = await response.json();
-        return data;
+      const params = new URLSearchParams({
+        gameId,
+        roundId
+      });
+  
+      console.log("Fetching scores:", {
+        gameId,
+        roundId,
+        url: `/api/games?${params.toString()}`
+      });
+  
+      const response = await fetch(`/api/games?${params.toString()}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API Error:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText
+        });
+        throw new Error('Network response was not ok');
+      }
+  
+      const data = await response.json();
+      console.log("DB Response data:", {
+        count: data?.length,
+        data
+      });
+      return data;
     } catch (error) {
-        console.error('ScoreService error:', error);
-        throw error;
+      console.error("Error fetching scores:", error);
+      throw error;
     }
-}
+  }
 
   static async verifyScores({
     gameId,
@@ -95,8 +108,8 @@ export class ScoreService {
     scoreIndexes: number[],
     validations: boolean[],
     verifierAddress: Address,
-    transactionHash: Hash,
-    contractHash?: Hash,
+    transactionHash: `0x${string}`,
+    contractHash?: `0x${string}`,
     transactionBlockNumber?: bigint,
     transactionTimestamp?: Date
   }) {

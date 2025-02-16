@@ -48,6 +48,7 @@ export interface Score extends ContractScore {
   lines?: number
   moves_count?: number
   moves_hash?: string
+  game_state?: string
 }
 
 export interface RoundView extends Omit<ContractRoundView, 'scores'> {

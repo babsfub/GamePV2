@@ -725,10 +725,6 @@
       color: var(--color-text);
     }
   
-    /* Wallet Section */
-    .wallet-section {
-      padding: 1.5rem;
-    }
   
     .wallet-warning {
       padding: 0.75rem;
