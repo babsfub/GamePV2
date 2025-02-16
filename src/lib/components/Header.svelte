@@ -68,8 +68,21 @@
     if (!browser) return;
 
     function updateState() {
+      const newPath = window.location.pathname;
+      
+      // Réinitialiser les scores uniquement lors du changement de page
+      if (currentPath === '/games/tetris' && newPath !== '/games/tetris') {
+        gameState.tetrisState = {
+          ...gameState.tetrisState,
+          score: 0,
+          level: 1,
+          lines: 0,
+          is_game_over: false
+        };
+      }
+
       isMobile = window.innerWidth <= 768;
-      currentPath = window.location.pathname;
+      currentPath = newPath;
     }
 
     updateState();

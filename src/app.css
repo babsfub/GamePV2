@@ -2,26 +2,24 @@
 @import 'tailwindcss/base';
 @import 'tailwindcss/components';
 
-
 :root {
   /* Couleurs principales */
-  --color-primary: #34C759;
-  --color-secondary: #FFC107;
-  --color-text: #333;
-  --color-text-secondary: #666;
-  --color-surface: #F7F7F7;
-  --color-surface-alt: #E5E5E5;
+  --color-primary: #4ADE80; /* Vert légèrement plus vif pour meilleur contraste */
+  --color-secondary: #FFB224; /* Orange plus chaud */
+  --color-text: #E2E8F0; /* Texte clair pour fond sombre */
+  --color-text-secondary: #94A3B8; /* Texte secondaire plus doux */
+  --color-surface: #2A3447; /* Surface sombre avec une teinte bleue */
+  --color-surface-alt: #374151; /* Surface alternative plus claire */
   
-  /* Couleurs de saison */
-  --color-summer: #ffc107;
-  --color-autumn: #ff9800;
-  --color-winter: #2196f3;
-  --color-spring: #8bc34a;
-  
-  /* Espacements */
+  --color-summer: #FFA726;
+  --color-autumn: #FF7043;
+  --color-winter: #42A5F5;
+  --color-spring: #7CB342;
+ 
   --spacing-screen-safe: 20px;
   --max-width-game: 800px;
 }
+
 
 /* Container principal */
 .game-container {
@@ -31,8 +29,9 @@
   justify-content: center;
   min-height: 100vh;
   padding: var(--spacing-screen-safe);
-  background-image: linear-gradient(to bottom, #f9f9f9, #ffffff);
+  background-image: linear-gradient(to bottom, #1A1F2E, #1E2538); 
 }
+
 
 /* Panneau de jeu */
 .game-panel {
@@ -41,16 +40,15 @@
   overflow: hidden;
   height: fit-content;
   margin: 20px;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); /* Ombre plus prononcée */
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
   padding: 20px;
 }
-
 /* Section des statistiques */
 .stats-section {
-  grid-column: 3 / 3;
+  grid-column: 3 / 4;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -62,10 +60,10 @@
   flex-direction: column;
   align-items: center;
   padding: 10px;
-  background: linear-gradient(to bottom, #ffffff, var(--color-surface-alt));
+  background: linear-gradient(to bottom, var(--color-surface), var(--color-surface-alt));
   border-radius: 0.5rem;
   margin: 10px;
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
   transition: all 0.2s;
 }
 
@@ -118,7 +116,7 @@ canvas {
   display: block;
   max-width: 100%;
   height: auto;
-  border: 2px solid #fff;
+  border: 2px solid #dbc1c1;
 }
 
 /* Overlay */
@@ -162,7 +160,7 @@ canvas {
   justify-content: space-between;
   align-items: center;
   padding: 10px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.05); /* Plus subtil */
   border-radius: 0.375rem;
   font-size: 14px;
 }
@@ -172,17 +170,17 @@ canvas {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 0.25rem;
   font-family: monospace;
+  color: var(--color-text);
 }
-
 /* Bouton retry */
 .retry-button {
   margin-top: 10px;
   padding: 10px 20px;
   background: var(--color-primary);
-  color: white;
+  color: #1A1F2E; /* Texte sombre sur bouton clair */
   border: none;
   border-radius: 0.5rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   animation: pulse 2s infinite;
@@ -249,9 +247,9 @@ canvas {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: var(--color-text);
   font-size: 24px;
   display: flex;
   align-items: center;
@@ -262,11 +260,12 @@ canvas {
 }
 
 .touch-btn:active {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.2);
 }
 
+
 .touch-btn.rotate {
-  background: rgba(52, 199, 89, 0.3);
+  background: rgba(74, 222, 128, 0.2);
 }
 
 /* Animations */

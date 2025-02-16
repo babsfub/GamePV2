@@ -28,6 +28,13 @@
     dbValue: string;
   }
 
+  interface VerificationStatus {
+    gameHash: boolean;
+    transaction: boolean;
+    gameState: boolean;
+    chainState: boolean;
+  }
+
   // Props
   const { selectedGame } = $props<{ selectedGame: GameId }>();
 
@@ -50,6 +57,8 @@
   let scoreDifferences = $state<Record<number, Difference[]>>({});
   let verificationResults = $state<Record<number, ValidationResult>>({});
   let validatorNotes = $state<Record<number, string>>({});
+  let verificationInProgress = $state<Record<number, boolean>>({});
+
 
   // États dérivés
   let isConnected = $derived(initialized && walletState.isConnected);
@@ -59,9 +68,25 @@
     walletState.isVerifier && 
     !verifying && 
     selectedScores.size > 0 &&
-    Object.keys(batchValidation).length > 0 &&
+    Object.keys(verificationResults).length === selectedScores.size &&
     currentRound?.isActive
   );
+
+  let verificationStatus = $derived(() => {
+    const status: Record<number, VerificationStatus> = {};
+    selectedScores.forEach(index => {
+      if (verificationResults[index]) {
+        const details = verificationResults[index].verificationDetails;
+        status[index] = {
+          gameHash: details.find(d => d.type === 'game_hash')?.success ?? false,
+          transaction: details.find(d => d.type === 'transaction')?.success ?? false,
+          gameState: details.find(d => d.type === 'game_state')?.success ?? false,
+          chainState: details.find(d => d.type === 'chain_state')?.success ?? false
+        };
+      }
+    });
+    return status;
+  });
 
   async function loadPendingScores() {
     if (!walletState?.isVerifier) return;
@@ -144,6 +169,36 @@
         validationState.setLoading(false);
     }
   }
+
+  async function verifySelectedScore(index: number) {
+    if (!pendingScores[index]) return;
+    try {
+      verificationInProgress[index] = true;
+      const result = await verifyScore(pendingScores[index], index);
+      verificationResults[index] = result;
+      batchValidation[index] = result.verificationDetails.every(d => d.success);
+    } catch (error) {
+      console.error(`Error verifying score ${index}:`, error);
+      uiState.error(`Failed to verify score ${index}`);
+    } finally {
+      verificationInProgress[index] = false;
+    }
+  }
+
+  function toggleScoreSelection(index: number) {
+    const newSelected = new Set(selectedScores);
+    if (newSelected.has(index)) {
+      newSelected.delete(index);
+      delete batchValidation[index];
+      delete verificationResults[index];
+      delete validatorNotes[index];
+    } else {
+      newSelected.add(index);
+      verifySelectedScore(index);
+    }
+    selectedScores = newSelected;
+  }
+
 
   async function verifyGameHash(score: Score, index: number): Promise<VerificationDetail> {
     try {
@@ -448,6 +503,58 @@
     validatorNotes[index] = note;
   }
 
+  async function handleBatchSubmission() {
+    if (!canVerify || !walletState.address) return;
+
+    try {
+      verifying = true;
+      const validScores = Array.from(selectedScores)
+        .filter(index => batchValidation[index] === true)
+        .map(index => ({
+          index: BigInt(index),
+          score: pendingScores[index],
+          note: validatorNotes[index] || ''
+        }));
+
+      const tx = await writeContract.verifyScoresBatch({
+        roundId: gameState.configs[selectedGame as GameId]?.currentRound ?? BigInt(0),
+        game: selectedGame,
+        scoreIndexes: validScores.map(s => s.index),
+        validations: validScores.map(() => true),
+        account: walletState.address
+      });
+
+      await ScoreService.verifyScores({
+        gameId: selectedGame,
+        roundId: gameState.configs[selectedGame as GameId]?.currentRound ?? BigInt(0),
+        scoreIndexes: validScores.map(s => Number(s.index)),
+        validations: validScores.map(() => true),
+        verifierAddress: walletState.address,
+        transactionHash: tx
+      });
+
+      await loadPendingScores();
+      uiState.success(`Successfully validated ${validScores.length} scores`);
+    } catch (error) {
+      console.error('Batch submission error:', error);
+      uiState.error('Failed to submit validations');
+    } finally {
+      verifying = false;
+      resetState();
+    }
+  }
+
+  function resetState() {
+    selectedScores = new Set();
+    batchValidation = {};
+    verificationResults = {};
+    validatorNotes = {};
+    verificationInProgress = {};
+    validationState.setSelectedScores(new Set());
+    validationState.setBatchValidation({});
+  }
+
+
   async function initialize() {
     try {
       if (selectedGame === 'tetris') {
@@ -503,38 +610,6 @@
       {:else if pendingScores.length === 0}
         <div class="empty">No pending scores to validate</div>
       {:else}
-        <div class="actions-panel">
-          <div class="selected-info">
-            <span class="selected-count">
-              {selectedScores.size} scores selected
-            </span>
-            <div class="action-buttons">
-              <button
-                class="action-button approve"
-                onclick={() => {
-                  for (const index of selectedScores) {
-                    setValidation(index, true);
-                  }
-                }}
-                disabled={verifying}
-              >
-                Approve Selected
-              </button>
-              <button
-                class="action-button reject"
-                onclick={() => {
-                  for (const index of selectedScores) {
-                    setValidation(index, false);
-                  }
-                }}
-                disabled={verifying}
-              >
-                Reject Selected
-              </button>
-            </div>
-          </div>
-        </div>
-
         <div class="table-container">
           <table>
             <thead>
@@ -542,12 +617,10 @@
                 <th>Select</th>
                 <th>Player</th>
                 <th>Score</th>
-                <th>Block Number</th>
-                <th>Transaction Hash</th>
                 <th>Game Info</th>
+                <th>Verification Status</th>
                 <th>Validation</th>
-                <th>Differences</th>
-                <th>Status</th>
+                <th>Notes</th>
               </tr>
             </thead>
             <tbody>
@@ -557,16 +630,12 @@
                     <input
                       type="checkbox"
                       checked={selectedScores.has(i)}
-                      onchange={() => toggleScore(i)}
+                      onchange={() => toggleScoreSelection(i)}
                       disabled={verifying}
                     />
                   </td>
                   <td class="address">{score.player.slice(0, 6)}...{score.player.slice(-4)}</td>
                   <td class="score">{score.score.toString()}</td>
-                  <td class="block">{score.blockNumber.toString()}</td>
-                  <td class="hash" title={score.transactionHash}>
-                    {score.transactionHash.slice(0, 10)}...
-                  </td>
                   <td class="game-info">
                     {#if score.level !== undefined}
                       <span class="info-tag">Level {score.level.toString()}</span>
@@ -574,64 +643,77 @@
                     {#if score.lines !== undefined}
                       <span class="info-tag">Lines {score.lines}</span>
                     {/if}
-                    {#if score.moves_count !== undefined}
-                      <span class="info-tag">Moves {score.moves_count}</span>
-                    {/if}
                   </td>
-                  <td>
-                    {#if batchValidation[i] !== undefined}
-                      <span class="validation-badge {batchValidation[i] ? 'valid' : 'invalid'}">
-                        {batchValidation[i] ? '✓ Valid' : '✗ Invalid'}
-                      </span>
-                    {/if}
-                  </td>
-                  
-                  <td class="differences">
-                    {#if scoreDifferences[i]?.length}
-                      <div class="differences-list">
-                        {#each scoreDifferences[i] as diff}
-                          <div class="difference-item">
-                            <span class="field">{diff.field}:</span>
-                            <div class="values">
-                              <span class="contract">Contract: {diff.contractValue}</span>
-                              <span class="db">DB: {diff.dbValue}</span>
-                            </div>
-                          </div>
-                        {/each}
+                  <td class="verification-status">
+                    {#if verificationInProgress[i]}
+                      <div class="verification-loading">Verifying...</div>
+                    {:else if verificationStatus()[i]}
+                      <div class="verification-details">
+                        <div class="verification-item">
+                          <span class="label">Game Hash:</span>
+                          <span class="status" class:success={verificationStatus()[i].gameHash}>
+                            {verificationStatus()[i].gameHash ? '✓' : '✗'}
+                          </span>
+                        </div>
+                        <div class="verification-item">
+                          <span class="label">Transaction:</span>
+                          <span class="status" class:success={verificationStatus()[i].transaction}>
+                            {verificationStatus()[i].transaction ? '✓' : '✗'}
+                          </span>
+                        </div>
+                        <div class="verification-item">
+                          <span class="label">Game State:</span>
+                          <span class="status" class:success={verificationStatus()[i].gameState}>
+                            {verificationStatus()[i].gameState ? '✓' : '✗'}
+                          </span>
+                        </div>
+                        <div class="verification-item">
+                          <span class="label">Chain State:</span>
+                          <span class="status" class:success={verificationStatus()[i].chainState}>
+                            {verificationStatus()[i].chainState ? '✓' : '✗'}
+                          </span>
+                        </div>
                       </div>
                     {/if}
-                    {#if verificationResults[i]?.verificationDetails}
-                      {#each verificationResults[i].verificationDetails as detail}
-                        {#if detail.details.error}
-                          <div class="error-message">
-                            {detail.type}: {detail.details.error}
-                          </div>
-                        {/if}
-                      {/each}
-                    {/if}
                   </td>
                   <td>
-                    <span class="status-badge pending">
-                      Pending
-                    </span>
+                    <select
+                      bind:value={batchValidation[i]}
+                      disabled={verifying || !verificationResults[i]}
+                    >
+                      <option value={undefined}>Select...</option>
+                      <option value={true}>Valid</option>
+                      <option value={false}>Invalid</option>
+                    </select>
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      bind:value={validatorNotes[i]}
+                      placeholder="Add notes..."
+                      disabled={verifying}
+                    />
                   </td>
                 </tr>
               {/each}
             </tbody>
           </table>
         </div>
-
-        <button
-          class="verify-button"
-          disabled={!canVerify}
-          onclick={verifySelectedScores}
-        >
-          {verifying ? 'Verifying...' : 'Verify Selected Scores'}
-        </button>
+  
+        <div class="actions-panel">
+          <button
+            class="submit-button"
+            disabled={!canVerify}
+            onclick={handleBatchSubmission}
+          >
+            {verifying ? 'Submitting...' : 'Submit Validations'}
+          </button>
+        </div>
       {/if}
     </div>
-  {/if}
-</div>
+    {/if}
+  </div>
+  
 
 <style>
   .validator-container {
@@ -726,10 +808,6 @@
     background: rgba(79, 70, 229, 0.1);
   }
 
-  
-
-  
-
   .game-info {
     display: flex;
     gap: 0.5rem;
@@ -744,93 +822,6 @@
     white-space: nowrap;
   }
 
-  .differences-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .difference-item {
-    font-size: 0.75rem;
-    padding: 0.5rem;
-    background: rgba(239, 68, 68, 0.1);
-    border-radius: 0.25rem;
-  }
-
-  .field {
-    font-weight: 500;
-    color: white;
-  }
-
-  .values {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    margin-top: 0.25rem;
-  }
-
-  .contract {
-    color: rgb(34, 197, 94);
-  }
-
-  .db {
-    color: rgb(239, 68, 68);
-  }
-
-  .error-message {
-    font-size: 0.75rem;
-    padding: 0.5rem;
-    background: rgba(239, 68, 68, 0.1);
-    border-radius: 0.25rem;
-    color: rgb(239, 68, 68);
-    margin-top: 0.5rem;
-  }
-
-  .selected-info {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .selected-count {
-    font-size: 0.875rem;
-    color: var(--color-text-secondary);
-  }
-
-  .action-buttons {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .action-button {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 0.5rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .action-button:hover:not(:disabled) {
-    opacity: 0.9;
-    transform: translateY(-1px);
-  }
-
-  .action-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .action-button.approve {
-    background: rgb(34, 197, 94);
-    color: white;
-  }
-
-  .action-button.reject {
-    background: rgb(239, 68, 68);
-    color: white;
-  }
 
   .status-badge {
     display: inline-flex;
@@ -845,34 +836,48 @@
     color: rgb(34, 197, 94);
   }
 
-  .status-badge.pending {
-    background: rgba(234, 179, 8, 0.1);
-    color: rgb(234, 179, 8);
+  .verification-status {
+    min-width: 200px;
   }
 
-  .validation-badge {
-    display: inline-flex;
+  .verification-loading {
+    color: var(--color-text-secondary);
+    font-style: italic;
+  }
+
+  .verification-details {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .verification-item {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    padding: 0.25rem 0.75rem;
+    padding: 0.25rem;
+    background: rgba(0, 0, 0, 0.1);
     border-radius: 0.25rem;
-    font-size: 0.875rem;
   }
 
-  .validation-badge.valid {
-    background: rgba(34, 197, 94, 0.1);
-    color: rgb(34, 197, 94);
+  .verification-item .label {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
   }
 
-  .validation-badge.invalid {
-    background: rgba(239, 68, 68, 0.1);
+  .verification-item .status {
+    font-weight: 600;
     color: rgb(239, 68, 68);
   }
 
-  .verify-button {
+  .verification-item .status.success {
+    color: rgb(34, 197, 94);
+  }
+
+  .submit-button {
     width: 100%;
-    background: rgb(79, 70, 229);
-    color: white;
     padding: 0.75rem;
+    background: var(--color-primary);
+    color: white;
     border: none;
     border-radius: 0.5rem;
     font-weight: 500;
@@ -881,12 +886,7 @@
     margin-top: 1rem;
   }
 
-  .verify-button:hover:not(:disabled) {
-    opacity: 0.9;
-    transform: translateY(-1px);
-  }
-
-  .verify-button:disabled {
+  .submit-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
@@ -897,10 +897,7 @@
     color: var(--color-text-secondary);
   }
 
-  .hash {
-    font-family: monospace;
-    font-size: 0.875rem;
-  }
+ 
 
   .address {
     font-family: monospace;
@@ -920,18 +917,9 @@
       grid-template-columns: 1fr;
     }
 
-    .selected-info {
-      flex-direction: column;
-      gap: 1rem;
-    }
+    
 
-    .action-buttons {
-      width: 100%;
-    }
-
-    .action-button {
-      flex: 1;
-    }
+    
 
     .table-container {
       margin: 0.5rem -1rem;
@@ -969,9 +957,7 @@
       padding: 0.75rem;
     }
 
-    .action-buttons {
-      flex-direction: column;
-    }
+    
 
     
   }
