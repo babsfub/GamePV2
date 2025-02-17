@@ -673,7 +673,7 @@
       justify-content: center;
       gap: 2rem;
       width: 100%;
-      min-width: 80vw; /* Ajustez la valeur selon vos besoins */
+      min-width: 80vw;
       max-width: var(--max-width-game);
       margin: 0 auto;
     }
@@ -693,7 +693,6 @@
     align-items: center;
     margin-bottom: 10px;
     padding: 1rem;
-    /* Ajout d'une largeur fixe */
     width: 100%;
   }
 
@@ -712,10 +711,8 @@
     padding: 0.5rem;
     background: rgba(0, 0, 0, 0.2);
     border-radius: 0.5rem;
-    /* Ajout d'une largeur et hauteur fixes */
     width: 100%;
     min-height: 80px;
-    /* Ajout d'un conteneur rigide */
     box-sizing: border-box;
   }
 
@@ -723,7 +720,6 @@
     font-size: 1.25rem;
     font-weight: 600;
     color: var(--color-text);
-    /* Ajout d'une largeur minimale et d'un alignement */
     min-width: 4ch;
     text-align: center;
   }
@@ -732,7 +728,6 @@
     font-size: 0.875rem;
     color: var(--color-text-secondary);
     text-transform: uppercase;
-    /* Ajout d'une largeur fixe */
     width: 100%;
     text-align: center;
   }
