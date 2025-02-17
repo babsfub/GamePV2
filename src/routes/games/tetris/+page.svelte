@@ -8,7 +8,7 @@
   import init, { TetrisEngine } from '$lib/games/tetris/pkg/tetris_engine.js';
   import LeaderBoard from '$lib/components/LeaderBoard.svelte';
   import ValidateScore from '$lib/components/admin/validateScoreLarge.svelte';
-  import type { TetrisState, ContractRoundView, RoundView, Score } from '$lib/types.js';
+  import type { TetrisState, ContractRoundView, RoundView } from '$lib/types.js';
   import type { TetrisGame } from '$lib/server/db/schema.js';
   import { getWalletState } from '$lib/state/wallet.svelte.js';
   import { getGameState } from '$lib/state/game.svelte.js';
