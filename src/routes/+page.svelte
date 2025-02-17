@@ -65,37 +65,189 @@
     }
   }
 
-  // Effet pour la mise à jour périodique
   $effect(() => {
     updateGameData();
     const interval = setInterval(updateGameData, 60000);
     return () => clearInterval(interval);
   });
+
+  const META = {
+    title: "Game-retro - Innovative Free Web3 Arcade Games",
+    description: "Dive into a universe where gaming meets blockchain innovation. Play for free and compete for real rewards in our reimagined arcade classics!",
+  };
+
 </script>
 
-    <!-- Hero Section -->
-    <section class="hero-section">
-      <h1>Play. Compete. Win.</h1>
-      <p>Classic arcade games reinvented for Web3. Compete for real prizes.</p>
-    </section>
+<svelte:head>
+  <title>{META.title}</title>
+  <meta name="description" content={META.description} />
+  <meta property="og:title" content={META.title} />
+  <meta property="og:description" content={META.description} />
+  <meta name="twitter:title" content={META.title} />
+  <meta name="twitter:description" content={META.description} />
+</svelte:head>
 
-    <!-- Game Cards Section -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-      {#each activeGameMetrics as game (game.id)}
-        <GameCard {game} />
-      {/each}
+<main class="home-container">
+  <!-- Hero Section -->
+  <section class="hero-section bg-glass rounded-game slide-up">
+    <h1 class="hero-title">Game-PV</h1>
+    <p class="hero-subtitle">Your destination for innovative free Web3 arcade games!</p>
+    <div class="hero-description">
+      <p>Step into a world where classic gaming meets blockchain innovation. Play for free, compete for high scores, and earn real rewards in our revolutionary gaming platform!</p>
     </div>
+  </section>
 
-    <!-- Stats Section -->
-    <StatsCard stats={globalStats} />
-
-    <!-- Game Selection & Leaderboard -->
-    <div class="space-y-8">
-      <GameSelector
-        games={gameState.activeGames}
-        bind:selected={selectedGame}
-      />
-      <LeaderBoard 
-        selectedGame={selectedGame === 'all' ? gameState.activeGames[0] : selectedGame} 
-      />
+  <!-- How It Works Section -->
+  <section class="features-section slide-up">
+    <h2 class="section-title">How It Works</h2>
+    <div class="features-grid">
+      <div class="feature-card bg-glass">
+        <h3>Free to Play</h3>
+        <p>Enjoy all our games with no entry fee. Have fun and choose when to join the competitive rounds.</p>
+      </div>
+      <div class="feature-card bg-glass">
+        <h3>Flexible Stakes</h3>
+        <p>Submit your score with a variable stake to join the competition. All stakes contribute to the round's reward pool.</p>
+      </div>
+      <div class="feature-card bg-glass">
+        <h3>Exciting Rounds</h3>
+        <p>23.5-hour rounds where top players share the prize pool. First place typically earns over 50% of the pool.</p>
+      </div>
+      <div class="feature-card bg-glass">
+        <h3>Web3 Ready</h3>
+        <p>Simply connect your digital wallet to start your journey. Your transactions and rewards are secured by blockchain.</p>
+      </div>
     </div>
+  </section>
+
+  <!-- Games Section -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-8 slide-up">
+    {#each activeGameMetrics as game (game.id)}
+      <GameCard {game} />
+    {/each}
+  </div>
+
+  <!-- Stats Section -->
+  <StatsCard stats={globalStats} />
+
+  <!-- Why Choose Us Section -->
+  <section class="benefits-section slide-up">
+    <h2 class="section-title">Why Choose Game-PV?</h2>
+    <div class="benefits-grid">
+      <div class="benefit-card bg-glass">
+        <h3>Attractive Rewards</h3>
+        <p>Showcase your skills and win real rewards. Top players earn substantial prizes from each round.</p>
+      </div>
+      <div class="benefit-card bg-glass">
+        <h3>Passionate Community</h3>
+        <p>Join a growing community of competitive gamers. Fair play and exciting challenges await.</p>
+      </div>
+      <div class="benefit-card bg-glass">
+        <h3>Security & Innovation</h3>
+        <p>Blockchain technology ensures transparent and secure transactions for all your earnings.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Call to Action -->
+  <section class="cta-section bg-glass rounded-game text-center p-8 my-16 slide-up">
+    <h2 class="text-2xl font-bold mb-4">Ready to Play?</h2>
+    <p class="text-gray-300 mb-6">Connect your wallet, set your high scores, and prove you're the best in this unique gaming universe!</p>
+  </section>
+
+  <!-- Leaderboard Section -->
+  <div class="space-y-8 slide-up">
+    <GameSelector
+      games={gameState.activeGames}
+      bind:selected={selectedGame}
+    />
+    <LeaderBoard 
+      selectedGame={selectedGame === 'all' ? gameState.activeGames[0] : selectedGame} 
+    />
+  </div>
+</main>
+
+
+    <style>
+      .home-container {
+        max-width: var(--max-width-game);
+        margin: 0 auto;
+        padding: 2rem var(--spacing-screen-safe);
+      }
+    
+      .hero-title {
+        font-size: 3.5rem;
+        font-weight: 700;
+        background: linear-gradient(to right, var(--color-primary), var(--color-secondary));
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 1rem;
+      }
+    
+      .hero-subtitle {
+        font-size: 1.5rem;
+        color: var(--color-text);
+        margin-bottom: 1.5rem;
+      }
+    
+      .hero-description {
+        max-width: 800px;
+        margin: 0 auto;
+        color: var(--color-text-secondary);
+        line-height: 1.6;
+      }
+    
+      .section-title {
+        font-size: 2rem;
+        font-weight: 600;
+        color: var(--color-text);
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+    
+      .features-grid,
+      .benefits-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+        margin-bottom: 4rem;
+      }
+    
+      .feature-card,
+      .benefit-card {
+        padding: 2rem;
+        border-radius: 1rem;
+        transition: transform 0.3s ease;
+      }
+    
+      .feature-card:hover,
+      .benefit-card:hover {
+        transform: translateY(-4px);
+      }
+    
+      .feature-card h3,
+      .benefit-card h3 {
+        color: var(--color-primary);
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+      }
+    
+      @media (max-width: 768px) {
+        .hero-title {
+          font-size: 2.5rem;
+        }
+    
+        .hero-subtitle {
+          font-size: 1.25rem;
+        }
+    
+        .features-grid,
+        .benefits-grid {
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+      }
+    </style>
+    
