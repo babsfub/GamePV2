@@ -16,6 +16,7 @@
   let scores = $state<Score[]>([]);
   let loading = $state(false);
   let error = $state<string | null>(null);
+  let timerKey = $state(0);
 
   // États dérivés
   let currentRound = $derived(gameState.currentRounds[selectedGame]);
@@ -69,29 +70,52 @@
 
   // Fonction pour charger les scores
   async function loadScores() {
-    if (!currentRound) return;
+  if (!currentRound) return;
+  
+  try {
+    loading = true;
+    error = null;
     
-    try {
-      loading = true;
-      error = null;
-      
-      // Trier les scores par ordre décroissant
-      scores = [...(currentRound.scores || [])]
-        .sort((a, b) => Number(b.score) - Number(a.score));
-        
-    } catch (err) {
-      console.error('Error loading scores:', err);
-      error = 'Failed to load leaderboard scores';
-    } finally {
-      loading = false;
+    console.log('Current round scores:', currentRound.scores); 
+    
+    if (currentRound.scores && currentRound.scores.length > 0) {
+     
+      scores = [...currentRound.scores].sort((a, b) => Number(b.score - a.score));
+    } else {
+      scores = [];
     }
+    
+  } catch (err) {
+    console.error('Error loading scores:', err);
+    error = 'Failed to load leaderboard scores';
+    scores = [];
+  } finally {
+    loading = false;
+  }
+}
+
+  function calculateTimeLeft(endTime: bigint): string {
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    if (endTime <= now) return 'Round ended';
+
+    const remaining = Number(endTime - now);
+    const hours = Math.floor(remaining / 3600);
+    const minutes = Math.floor((remaining % 3600) / 60);
+
+    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   }
 
-  $effect(() => {
-    if (currentRound) {
+  // Effet pour recharger les scores toutes les minutes
+$effect(() => {
+  if (currentRound) {
+    loadScores();
+    const interval = setInterval(() => {
       loadScores();
-    }
-  });
+    }, 60000);
+    
+    return () => clearInterval(interval);
+  }
+});
 </script>
 
 <div class="leaderboard-content">
@@ -105,6 +129,10 @@
         {/if}
       </div>
       {#if currentRound.basic}
+        <div class="time-remaining">
+          <span class="time-label">Time Remaining:</span>
+          <span class="time-value">{calculateTimeLeft(currentRound.basic.endTime)}</span>
+        </div>
         <div class="time-info">
           <span class="time-item">Start: {formatTime(currentRound.basic.startTime)}</span>
           <span class="time-item">End: {formatTime(currentRound.basic.endTime)}</span>
@@ -330,6 +358,27 @@
     margin-top: 0.5rem;
     font-size: 0.875rem;
     color: var(--color-text-secondary);
+  }
+
+  .time-remaining {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(var(--color-primary-rgb), 0.1);
+    border-radius: 0.5rem;
+  }
+
+  .time-label {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .time-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-primary);
   }
 
   @media (max-width: 768px) {
