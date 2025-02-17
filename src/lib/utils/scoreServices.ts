@@ -3,6 +3,26 @@ import type { GameId } from '$lib/types.js';
 import type { Address, Hash } from 'viem';
 
 export class ScoreService {
+  private static convertBigIntToString(obj: any): any {
+    if (typeof obj === 'bigint') {
+      return obj.toString();
+    }
+    
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.convertBigIntToString(item));
+    }
+    
+    if (obj !== null && typeof obj === 'object') {
+      const result: { [key: string]: any } = {};
+      for (const key in obj) {
+        result[key] = this.convertBigIntToString(obj[key]);
+      }
+      return result;
+    }
+    
+    return obj;
+  }
+
   static async submitScore({
     gameState,
     playerAddress,
@@ -22,30 +42,42 @@ export class ScoreService {
     blockNumber: bigint,
     stake: bigint,
     scoreHash: Hash,
-    transactionHash: `0x${string}`,
-    contractHash?: `0x${string}`,
+    transactionHash: Hash,
+    contractHash?: Hash,
     roundId: bigint,
     transactionBlockNumber?: bigint,
     transactionTimestamp?: Date
   }) {
+    // Créer un objet avec les BigInt convertis en string
+    const data: { [key: string]: any } = {
+      gameState: this.convertBigIntToString(gameState), // Conversion récursive
+      playerAddress,
+      score: score.toString(),
+      blockNumber: blockNumber.toString(),
+      stake: stake.toString(),
+      scoreHash,
+      transactionHash,
+      contractHash,
+      roundId: roundId.toString(),
+      transactionBlockNumber: transactionBlockNumber?.toString(),
+      transactionTimestamp: transactionTimestamp?.toISOString()
+    };
+
+    // Nettoyage des undefined
+    Object.keys(data).forEach(key => {
+      if (data[key] === undefined) {
+        delete data[key];
+      }
+    });
+
+    console.log('Prepared data for submission:', data); // Ajout d'un log pour debug
+
     const response = await fetch('/api/games', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        gameState,
-        playerAddress,
-        score: score.toString(),
-        blockNumber: blockNumber.toString(),
-        stake: stake.toString(),
-        scoreHash,
-        transactionHash,
-        contractHash,
-        roundId: roundId.toString(),
-        transactionBlockNumber: transactionBlockNumber?.toString(),
-        transactionTimestamp: transactionTimestamp?.toISOString()
-      })
+      body: JSON.stringify(data)
     });
 
     if (!response.ok) {

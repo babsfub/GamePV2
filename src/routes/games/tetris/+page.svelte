@@ -98,9 +98,9 @@
               transactionHash: dbScore?.transaction_hash as `0x${string}` ?? '0x0',
               // Convertir les champs de la DB en types corrects
               level: dbScore ? 
-                BigInt(dbScore.score) : // Utiliser le score comme level par défaut
+                BigInt(dbScore.score) : 
                 BigInt(0),
-              lines: 0, // Ces valeurs ne sont pas dans le schéma DB
+              lines: 0, 
               moves_count: 0,
               moves_hash: dbScore?.db_hash ?? ''
             };
@@ -307,7 +307,7 @@
             if (isPaused) {
                 isPaused = false;
                 engine?.toggle_pause();
-                startGameLoop(); // Relance la boucle de jeu
+                startGameLoop(); 
             } else {
                 isPaused = true;
                 engine?.toggle_pause();
@@ -366,79 +366,79 @@
   }
   // Gestion de la soumission des scores
   const handleSubmitScore = async (stake: string) => {
-  if (!engine || !walletState.address || !gameState) {
-    console.error('Missing required data for score submission');
-    return;
-  }
-  
-  try {
-    submitting = true;
-    error = null;
-
-    const [block, gameConfig] = await Promise.all([
-      publicClient.getBlock(),
-      contractActions.read.getGameConfig('tetris')
-    ]);
-      
-    if (!gameConfig?.saltKey) {
-      throw new Error('Could not get game configuration or salt key');
+    if (!engine || !walletState.address || !gameState) {
+      console.error('Missing required data for score submission');
+      return;
     }
+    
+    try {
+      submitting = true;
+      error = null;
 
-    const stakeInWei = parseEther(stake);
-    if (stakeInWei < gameConfig.minStake) {
-      throw new Error(`Minimum stake required: ${formatEther(gameConfig.minStake)} POL`);
+      const [block, gameConfig] = await Promise.all([
+        publicClient.getBlock(),
+        contractActions.read.getGameConfig('tetris')
+      ]);
+        
+      if (!gameConfig?.saltKey) {
+        throw new Error('Could not get game configuration or salt key');
+      }
+
+      const stakeInWei = parseEther(stake);
+      if (stakeInWei < gameConfig.minStake) {
+        throw new Error(`Minimum stake required: ${formatEther(gameConfig.minStake)} POL`);
+      }
+
+      const scoreHash = engine.get_score_hash(
+        walletState.address,
+        gameConfig.saltKey.toString(),
+        BigInt(block.number)
+      );
+
+      if (!scoreHash?.length) {
+        throw new Error('Failed to generate score hash');
+      }
+
+      const scoreHashHex = `0x${Buffer.from(scoreHash).toString('hex')}` as `0x${string}`;
+
+      // Soumission au smart contract
+      const tx = await contractActions.write.submitScore({
+        game: 'tetris',
+        score: BigInt(tetrisGameState?.score ?? 0),
+        hash: scoreHashHex,
+        value: stakeInWei,
+        account: walletState.address
+      });
+
+      // Attendre la confirmation
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
+
+      // Utiliser ScoreService au lieu du fetch direct
+      await ScoreService.submitScore({
+        gameState: tetrisGameState,
+        playerAddress: walletState.address,
+        score: BigInt(tetrisGameState?.score ?? 0), // Important: utiliser tetrisGameState.score
+        blockNumber: BigInt(block.number),
+        stake: stakeInWei,
+        scoreHash: scoreHashHex,
+        transactionHash: tx,
+        contractHash: receipt.blockHash,
+        roundId: gameConfig.currentRound,
+        transactionBlockNumber: receipt.blockNumber,
+        transactionTimestamp: new Date()
+      });
+
+      await updateGameData();
+      uiState.success(`Score submitted! TX: ${tx}`);
+
+    } catch (err) {
+      console.error('Error submitting score:', err);
+      error = err instanceof Error ? err.message : 'An unknown error occurred';
+      uiState.error(error);
+    } finally {
+      submitting = false;
     }
-
-    const scoreHash = engine.get_score_hash(
-      walletState.address,
-      gameConfig.saltKey.toString(),
-      BigInt(block.number)
-    );
-
-    if (!scoreHash?.length) {
-      throw new Error('Failed to generate score hash');
-    }
-
-    const scoreHashHex = `0x${Buffer.from(scoreHash).toString('hex')}` as `0x${string}`;
-
-    // Soumission au smart contract
-    const tx = await contractActions.write.submitScore({
-      game: 'tetris',
-      score: BigInt(tetrisGameState?.score ?? 0),
-      hash: scoreHashHex,
-      value: stakeInWei,
-      account: walletState.address
-    });
-
-    // Attendre la confirmation
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
-
-    // Utiliser ScoreService au lieu du fetch direct
-    await ScoreService.submitScore({
-      gameState: tetrisGameState,
-      playerAddress: walletState.address,
-      score: BigInt(score),
-      blockNumber: BigInt(block.number),
-      stake: stakeInWei,
-      scoreHash: scoreHashHex,
-      transactionHash: tx,
-      contractHash: receipt.blockHash,
-      roundId: gameConfig.currentRound,
-      transactionBlockNumber: receipt.blockNumber,
-      transactionTimestamp: new Date()
-    });
-
-    await updateGameData();
-    uiState.success(`Score submitted! TX: ${tx}`);
-
-  } catch (err) {
-    console.error('Error submitting score:', err);
-    error = err instanceof Error ? err.message : 'An unknown error occurred';
-    uiState.error(error);
-  } finally {
-    submitting = false;
-  }
-};
+  };
 
   // Initialisation et effets
   $effect(() => {

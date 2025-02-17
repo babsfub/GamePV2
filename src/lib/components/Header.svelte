@@ -5,14 +5,7 @@
   import { browser } from '$app/environment';
   import Connect from './wallet/Connect.svelte';
   import type { GameId } from '$lib/types.js';
-
-  // Types
-  interface GameLink {
-    id: GameId;
-    title: string;
-    path: string;
-    isActive: boolean;
-  }
+  import { GAMES } from '$lib/config/games.js';
 
   // Props avec la nouvelle syntaxe Runes
   const { isAdmin = false, isVerifier = false } = $props<{
@@ -35,7 +28,7 @@
 
   let gameLinks = $derived(activeGames.map(gameId => ({
     id: gameId,
-    title: gameId.charAt(0).toUpperCase() + gameId.slice(1),
+    title: GAMES[gameId].title,
     path: `/games/${gameId}`,
     isActive: currentPath === `/games/${gameId}`
   })));
@@ -169,7 +162,7 @@
           Profile
         </a>
 
-        {#if isAdmin}
+        {#if isAdmin || isVerifier}
           <a 
             href="/admin"
             class:active={currentPath === '/admin'}

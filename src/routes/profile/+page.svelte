@@ -155,7 +155,7 @@
                 </div>
                 <div class="stat-card">
                     <span class="stat-label">Total Stake</span>
-                    <span class="stat-value">{formatEther(playerStats.totalStake)} ETH</span>
+                    <span class="stat-value">{formatEther(playerStats.totalStake)} POL</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-label">Verified Scores</span>
@@ -168,7 +168,7 @@
         <div class="withdrawals-section">
             <h2>Pending Withdrawals</h2>
             <div class="withdrawal-info">
-                <span class="amount">{formatEther(pendingWithdrawals)} ETH</span>
+                <span class="amount">{formatEther(pendingWithdrawals)} POL</span>
                 <button 
                     class="withdraw-button"
                     disabled={pendingWithdrawals === 0n || isWithdrawing}
@@ -196,7 +196,7 @@
                             </div>
                             <div class="score-details">
                                 <div class="score-value">{score.score.toString()} pts</div>
-                                <div class="stake">Stake: {formatEther(score.stake)} ETH</div>
+                                <div class="stake">Stake: {formatEther(score.stake)} POL</div>
                             </div>
                             <div class="status">
                                 {#if score.verified}
@@ -235,8 +235,8 @@
 
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 0.3rem;
         margin-top: 1rem;
     }
 

@@ -569,7 +569,7 @@
       </div>
       <div class="info-item">
         <span class="label">Prize Pool</span>
-        <span class="value">{formatEther(currentRound.prizePool)} ETH</span>
+        <span class="value">{formatEther(currentRound.prizePool)} POL</span>
       </div>
       <div class="info-item">
         <span class="label">Status</span>

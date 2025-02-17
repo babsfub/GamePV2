@@ -2,32 +2,118 @@
 @import 'tailwindcss/base';
 @import 'tailwindcss/components';
 
-:root {
-  /* Couleurs principales */
-  --color-primary: #4ADE80; /* Vert légèrement plus vif pour meilleur contraste */
-  --color-secondary: #FFB224; /* Orange plus chaud */
-  --color-text: #E2E8F0; /* Texte clair pour fond sombre */
-  --color-text-secondary: #94A3B8; /* Texte secondaire plus doux */
-  --color-surface: #2A3447; /* Surface sombre avec une teinte bleue */
-  --color-surface-alt: #374151; /* Surface alternative plus claire */
+:root {  
+  --color-primary: #4ADE80;
+  --color-primary-rgb: 74, 222, 128;
+  --color-primary-dark: #3ebd6d;
+  --color-secondary: #FFB224;
+  --color-text: #E2E8F0;
+  --color-text-secondary: #94A3B8;
+  --color-surface: #2A3447;
+  --color-surface-alt: #374151;
+  --background-color: #1A1F2E;
   
-  --color-summer: #FFA726;
-  --color-autumn: #FF7043;
-  --color-winter: #42A5F5;
-  --color-spring: #7CB342;
- 
+  --color-surface-lighter: #3a4559;
+  --color-error: rgb(239, 68, 68);
+  --color-success: rgb(34, 197, 94);
+  --color-warning: rgb(234, 179, 8);
+  
   --spacing-screen-safe: 20px;
-  --max-width-game: 800px;
+  --max-width-game: 1200px;
 }
 
+body {
+  background-color: var(--background-color);
+  color: var(--color-text);
+}
 
+.page-container {
+  background-color: var(--background-color);
+  min-height: 100vh;
+}
+
+.card, 
+.section,
+.container {
+  background-color: var(--color-surface);
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+input, 
+select, 
+textarea {
+  background-color: var(--color-surface-alt);
+  color: var(--color-text);
+  border: 1px solid var(--color-surface-lighter);
+}
+
+button {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Tables */
+table {
+  background-color: var(--color-surface);
+}
+
+th {
+  background-color: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+}
+
+tr:hover {
+  background-color: var(--color-surface-lighter);
+}
+
+/* Messages d'état */
+.error {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--color-error);
+}
+
+.success {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: var(--color-success);
+}
+
+.warning {
+  background-color: rgba(234, 179, 8, 0.1);
+  color: var(--color-warning);
+}
+
+/* Hero Section */
+.hero-section {
+  padding: 2rem 0;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.hero-section h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.hero-section p {
+  font-size: 1.1rem;
+  color: var(--color-text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+}
 /* Container principal */
 .game-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  height: 100vh;
   padding: var(--spacing-screen-safe);
   background-image: linear-gradient(to bottom, #1A1F2E, #1E2538); 
 }
@@ -96,6 +182,95 @@
   text-align: center;
   font-size: 14px;
 }
+
+.game-card {
+  position: relative;
+  background: var(--color-surface);
+  border-radius: 1rem;
+  overflow: hidden;
+  transition: transform 0.2s ease;
+  height: auto;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.game-card img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.game-card h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.game-card p {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.game-card-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+
+.game-card-content {
+  padding: 1.5rem;
+}
+
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.game-card .game-info {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.game-card .game-info span {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.game-card .game-info svg {
+  width: 1rem;
+  height: 1rem;
+  fill: var(--color-primary);
+  margin-right: 0.5rem;
+}
+
+.game-card .game-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.game-card .game-actions button {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.game-card .game-actions button:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
 
 /* Zone de jeu */
 .game-area {

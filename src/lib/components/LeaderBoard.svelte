@@ -1,10 +1,9 @@
-<!-- src/lib/components/LeaderBoard.svelte -->
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { getWalletState } from '$lib/state/wallet.svelte.js';
   import { getGameState } from '$lib/state/game.svelte.js';
   import { formatEther } from 'viem';
   import type { GameId, Score } from '$lib/types.js';
+ 
 
   // Props
   const { selectedGame }: { selectedGame: GameId } = $props();
@@ -32,6 +31,42 @@
   const isCurrentPlayer = (address: string) =>
     walletState.address?.toLowerCase() === address.toLowerCase();
 
+  function calculatePotentialRewards(): Map<string, bigint> {
+      if (!currentRound?.basic || !config?.rewardDistribution || scores.length === 0) {
+        return new Map();
+      }
+
+      const { maxWinners, platformFeePercent, winnerPercentages } = config.rewardDistribution;
+
+      if (!winnerPercentages || winnerPercentages.length === 0) {
+        return new Map();
+      }
+
+      const validScores = [...scores]
+        .sort((a, b) => Number(b.score - a.score))
+        .slice(0, Math.min(maxWinners, winnerPercentages.length));
+
+      const totalPrizePool = currentRound.prizePool;
+      const netPrizePool = totalPrizePool * BigInt(100 - platformFeePercent) / 100n;
+      
+      // Utiliser un index unique pour chaque score au lieu de l'adresse seule
+      const rewards = new Map<string, bigint>();
+      
+      validScores.forEach((score, index) => {
+        if (index < winnerPercentages.length) {
+          const percentage = BigInt(winnerPercentages[index]);
+          const reward = (netPrizePool * percentage) / 100n;
+          // Utiliser une combinaison de l'adresse et de l'index comme clé
+          const key = `${score.player}_${index}`;
+          rewards.set(key, reward);
+        }
+      });
+
+      return rewards;
+    }
+
+  let potentialRewards = $derived(calculatePotentialRewards());
+
   // Fonction pour charger les scores
   async function loadScores() {
     if (!currentRound) return;
@@ -52,7 +87,6 @@
     }
   }
 
-  // Charger les scores initiaux et mettre en place un observateur pour les mises à jour
   $effect(() => {
     if (currentRound) {
       loadScores();
@@ -105,6 +139,11 @@
           <div class="score-details">
             <span class="score-value">{score.toString()}</span>
             <span class="stake-value">Stake: {formatEther(stake)} POL</span>
+            {#if potentialRewards.has(`${player}_${i}`)}
+              <span class="potential-reward">
+                Potential Reward: {formatEther(potentialRewards.get(`${player}_${i}`) || 0n)} POL
+              </span>
+            {/if}
           </div>
           <div class="status">
             {#if verified}
@@ -125,25 +164,6 @@
 </div>
 
 <style>
-  /* Styles existants... */
-
-  .loading-state,
-  .error-state {
-    text-align: center;
-    padding: 2rem;
-    color: var(--color-text-secondary);
-  }
-
-  .error-state {
-    color: rgb(239, 68, 68);
-  }
-
-  .top-three {
-    background: linear-gradient(to bottom, rgba(var(--color-primary-rgb), 0.2), var(--color-surface));
-    border: 1px solid var(--color-primary);
-  }
-
- 
   .leaderboard-content {
     background: var(--color-surface);
     border-radius: 1rem;
@@ -194,7 +214,7 @@
     align-items: center;
     gap: 1rem;
     padding: 1rem;
-    background: linear-gradient(to bottom, #ffffff, var(--color-surface-alt));
+    background: var(--color-surface-alt);
     border-radius: 0.5rem;
     transition: transform 0.2s ease;
   }
@@ -203,8 +223,21 @@
     transform: translateY(-2px);
   }
 
+  .score-row.top-three {
+    background: linear-gradient(
+      to right,
+      rgba(var(--color-primary-rgb), 0.1),
+      var(--color-surface-alt)
+    );
+    border: 1px solid var(--color-primary);
+  }
+
   .score-row.current-player {
-    background: linear-gradient(to bottom, rgba(var(--color-primary-rgb), 0.1), var(--color-surface));
+    background: linear-gradient(
+      to right,
+      rgba(var(--color-primary-rgb), 0.2),
+      var(--color-surface-alt)
+    );
     border: 1px solid var(--color-primary);
   }
 
@@ -239,6 +272,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    min-width: 200px;
   }
 
   .score-value {
@@ -250,6 +284,12 @@
   .stake-value {
     font-size: 0.875rem;
     color: var(--color-text-secondary);
+  }
+
+  .potential-reward {
+    font-size: 0.875rem;
+    color: var(--color-secondary);
+    font-weight: 500;
   }
 
   .status-badge {
@@ -265,8 +305,19 @@
   }
 
   .status-badge.verified {
-    background: #10B981;
+    background: var(--color-secondary);
     color: white;
+  }
+
+  .loading-state,
+  .error-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--color-text-secondary);
+  }
+
+  .error-state {
+    color: rgb(239, 68, 68);
   }
 
   .empty-state {
@@ -290,11 +341,17 @@
 
     .score-details {
       grid-column: 1 / -1;
+      min-width: unset;
+      width: 100%;
     }
 
     .status {
       grid-column: 1 / -1;
       justify-self: end;
+    }
+
+    .time-info {
+      flex-direction: column;
     }
   }
 </style>

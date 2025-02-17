@@ -7,37 +7,29 @@
   import GameCard from '$lib/components/games/GameCard.svelte';
   import StatsCard from '$lib/components/games/StatsCard.svelte';
   import GameSelector from '$lib/components/games/GameSelector.svelte';
+  import { GAMES, SUPPORTED_GAME_IDS } from '$lib/config/games.js';
 
   // État global
   const gameState = getGameState();
   let selectedGame = $state<GameId | 'all'>('all');
 
-  // Configuration des jeux
-  const GAMES_CONFIG = {
-    snake: {
-      title: 'Snake',
-      description: 'Race against time and collect power-ups in this modern twist on the classic.',
-      path: '/games/snake',
-      gradient: 'from-emerald-400 to-cyan-500',
-      imagePath: '/images/games/snake.webp'
-    },
-    tetris: {
-      title: 'Tetris', 
-      description: 'Stack blocks strategically in this enhanced version with special pieces.',
-      path: '/games/tetris',
-      gradient: 'from-purple-500 to-pink-500',
-      imagePath: '/images/games/tetris.webp'
-    }
+  // Configuration des gradients UI
+  const GRADIENTS = {
+    snake: 'from-emerald-400 to-cyan-500',
+    tetris: 'from-purple-500 to-pink-500'
   } as const;
 
-  // États dérivés avec la nouvelle syntaxe $derived
+  // États dérivés
   let activeGameMetrics = $derived(
-    gameState.activeGames.map(gameId => ({
-      id: gameId,
-      ...GAMES_CONFIG[gameId],
-      metrics: gameState.getGameMetrics(gameId),
-      config: gameState.configs[gameId]
-    }))
+    gameState.activeGames.map(gameId => {
+      const gameConfig = GAMES[gameId];
+      return {
+        ...gameConfig,
+        gradient: GRADIENTS[gameId],
+        metrics: gameState.getGameMetrics(gameId),
+        config: gameState.configs[gameId]
+      };
+    })
   );
 
   let globalStats = $derived({
@@ -48,14 +40,22 @@
 
   // Mise à jour des données
   async function updateGameData() {
-    for (const gameId of Object.keys(GAMES_CONFIG) as GameId[]) {
+    for (const gameId of SUPPORTED_GAME_IDS) {
       try {
         const config = await readContract.getGameConfig(gameId);
         gameState.setConfig(gameId, config);
 
         if (config?.active) {
           const round = await readContract.getRoundData(config.currentRound, gameId);
-          gameState.setRound(gameId, round);
+          // Ajouter les propriétés manquantes pour le type Score
+          const roundWithTransaction = {
+            ...round,
+            scores: round.scores.map(score => ({
+              ...score,
+              transactionHash: '0x0' as `0x${string}` // Valeur par défaut pour transactionHash
+            }))
+          };
+          gameState.setRound(gameId, roundWithTransaction);
         }
       } catch (err) {
         console.error(`Error updating ${gameId} data:`, err);
@@ -73,33 +73,29 @@
   });
 </script>
 
-<div class="game-container">
-  <!-- Hero Section -->
-  <section class="hero-section mb-16 text-center">
-    <h1 class="text-4xl md:text-6xl font-display font-bold mb-4">
-      Play. Compete. Win.
-    </h1>
-    <p class="text-lg text-gray-400 max-w-2xl mx-auto">
-      Classic arcade games reinvented for Web3. Compete for real prizes.
-    </p>
-  </section>
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <h1>Play. Compete. Win.</h1>
+      <p>Classic arcade games reinvented for Web3. Compete for real prizes.</p>
+    </section>
 
-  <!-- Game Cards -->
-  <section class="game-cards grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-    {#each activeGameMetrics as game (game.id)}
-      <GameCard {game} />
-    {/each}
-  </section>
+    <!-- Game Cards Section -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      {#each activeGameMetrics as game (game.id)}
+        <GameCard {game} />
+      {/each}
+    </div>
 
-  <!-- Stats Section -->
-  <StatsCard stats={globalStats} />
+    <!-- Stats Section -->
+    <StatsCard stats={globalStats} />
 
-  <!-- Game Selection & Leaderboard -->
-  <section class="game-selection mb-16">
-    <GameSelector
-      games={gameState.activeGames}
-      bind:selected={selectedGame}
-    />
-    <LeaderBoard selectedGame={selectedGame === 'all' ? gameState.activeGames[0] : selectedGame} />
-  </section>
-</div>
+    <!-- Game Selection & Leaderboard -->
+    <div class="space-y-8">
+      <GameSelector
+        games={gameState.activeGames}
+        bind:selected={selectedGame}
+      />
+      <LeaderBoard 
+        selectedGame={selectedGame === 'all' ? gameState.activeGames[0] : selectedGame} 
+      />
+    </div>

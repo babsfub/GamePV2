@@ -11,8 +11,8 @@ export const GAMES = {
     },
     tetris: {
       id: 'tetris',
-      title: 'Tetris',
-      description: 'The famous block-stacking puzzle game',
+      title: 'Speed blocks',
+      description: 'remake of the famous block-stacking puzzle game',
       path: '/games/tetris',
       maxScore: 1000000,
       imageUrl: '/images/games/tetris.png',

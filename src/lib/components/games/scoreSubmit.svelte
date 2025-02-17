@@ -119,38 +119,26 @@ const {
   }
 
   async function handleSubmit() {
-    if (!canSubmit || !walletState.address || !config ) return;
+  if (!canSubmit || !walletState.address || !config ) return;
 
-    try {
-      submitting = true;
-      error = null;
+  try {
+    submitting = true;
+    error = null;
 
-      // Préparer les données pour le contrat
-      const { contractScore, metadata } = await prepareContractSubmission();
-      console.log('Submitting score:', contractScore);
-      // Vérifier que le score est valide avant soumission
-      
-
-      // Soumettre au smart contract
-      const tx = await submitToContract(contractScore);
-      const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
-
-      // Sauvegarder en DB
-      const initialGameState = gameState; 
-      await submitToDB(contractScore, tx, receipt, initialGameState);
-
-      // Mettre à jour l'UI
-      await onSubmit(selectedStake);
-      uiState.success(`Score submitted! TX: ${tx}`);
-
-    } catch (err) {
-      console.error('Error submitting score:', err);
-      error = err instanceof Error ? err.message : 'Failed to submit score';
-      uiState.error(error);
-    } finally {
-      submitting = false;
-    }
+    // Uniquement préparer les données
+    const { contractScore, metadata } = await prepareContractSubmission();
+    
+    // Passer les données préparées au parent via onSubmit
+    await onSubmit(selectedStake);
+    
+  } catch (err) {
+    console.error('Error preparing score submission:', err);
+    error = err instanceof Error ? err.message : 'Failed to prepare score';
+    uiState.error(error);
+  } finally {
+    submitting = false;
   }
+}
 </script>
 
 <div class="stake-manager">

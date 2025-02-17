@@ -26,12 +26,12 @@ export class GameDataManager {
   }) {
     const newGame: NewTetrisGame = {
       player_address: playerAddress,
-      score: Number(score),              // Conversion en number
-      block_number: Number(blockNumber), // Conversion en number
-      stake: Number(stake),              // Conversion en number
+      score: Number(score),              
+      block_number: Number(blockNumber), 
+      stake: Number(stake),              
       score_hash: scoreHash,
       game_state: gameState,
-      round_id: Number(roundId),         // Conversion en number
+      round_id: Number(roundId),         
       transaction_hash: transactionHash,
       verified: false,
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
