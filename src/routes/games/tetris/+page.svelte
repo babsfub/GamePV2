@@ -686,45 +686,59 @@
       height: fit-content;
       min-width: 180px;
     }
-  
-    /* Stats Section */
-    .stats-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-bottom: 10px;
-      padding: 1rem;
-    }
-  
-    .stats-grid {
-      align-items: center;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap:0.25rem;
-      width: 80%;
-    }
-  
-    .stat-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 0.5rem;
-      background: rgba(0, 0, 0, 0.2);
-      border-radius: 0.5rem;
-    }
-  
-    .stat-label {
-      font-size: 0.875rem;
-      color: var(--color-text-secondary);
-      text-transform: uppercase;
-    }
-  
-    .stat-value {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--color-text);
-    }
-  
+     /* Stats Section */
+  .stats-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 1rem;
+    /* Ajout d'une largeur fixe */
+    width: 100%;
+  }
+
+  .stats-grid {
+    align-items: center;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.25rem;
+    width: 100%;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 0.5rem;
+    /* Ajout d'une largeur et hauteur fixes */
+    width: 100%;
+    min-height: 80px;
+    /* Ajout d'un conteneur rigide */
+    box-sizing: border-box;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-text);
+    /* Ajout d'une largeur minimale et d'un alignement */
+    min-width: 4ch;
+    text-align: center;
+  }
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    /* Ajout d'une largeur fixe */
+    width: 100%;
+    text-align: center;
+  }
+    
+
+
   
     .wallet-warning {
       padding: 0.75rem;
