@@ -43,15 +43,7 @@
   let lines = $state(0);
   let isPaused = $state(false);
   let isGameOver = $state(false);
-  let isMenuOpen = $state(false);
 
-  // États dérivés
-  let showValidation = $derived(data.isVerifier);
-  let isGameActive = $derived(() => {
-    const gameConfig = gameState.configs.tetris;
-    return !!gameConfig?.active;
-  });
-  
   // Constantes
   const BLOCK_SIZE = 30;
   const BOARD_WIDTH = 10;
@@ -79,7 +71,6 @@
       ) as ContractRoundView;
       
       if (roundData.scores.length > 0) {
-        // Utiliser le type TetrisGame inféré de Drizzle
         const response = await fetch(`/api/games?gameId=tetris&roundId=${config.currentRound}`);
         if (!response.ok) {
           throw new Error('Failed to fetch DB data');
@@ -96,7 +87,6 @@
             return {
               ...contractScore,
               transactionHash: dbScore?.transaction_hash as `0x${string}` ?? '0x0',
-              // Convertir les champs de la DB en types corrects
               level: dbScore ? 
                 BigInt(dbScore.score) : 
                 BigInt(0),
