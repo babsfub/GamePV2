@@ -70,13 +70,17 @@ export interface GameConfig {
 }
 
 export interface GameMetadata {
-  id: GameId
-  title: string
-  description: string
-  path: string
-  maxScore: number
-  imageUrl: string
-  minStake: string
+  id: GameId;
+  title: string;
+  description: string;
+  path: string;
+  maxScore: number;
+  imageUrl: string;
+  minStake: string;
+  gradient?: string;
+  difficulty?: string;
+  features?: string[];
+  descriptionLong?: string;
 }
 
 // Reward Types

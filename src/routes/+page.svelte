@@ -47,12 +47,11 @@
 
         if (config?.active) {
           const round = await readContract.getRoundData(config.currentRound, gameId);
-          // Ajouter les propriétés manquantes pour le type Score
           const roundWithTransaction = {
             ...round,
             scores: round.scores.map(score => ({
               ...score,
-              transactionHash: '0x0' as `0x${string}` // Valeur par défaut pour transactionHash
+              transactionHash: '0x0' as `0x${string}` 
             }))
           };
           gameState.setRound(gameId, roundWithTransaction);
@@ -158,8 +157,9 @@
   <!-- Leaderboard Section -->
   <div class="space-y-8 slide-up">
     <GameSelector
+      selected={selectedGame}
       games={gameState.activeGames}
-      bind:selected={selectedGame}
+      onSelect={(value) => selectedGame = value}
     />
     <LeaderBoard 
       selectedGame={selectedGame === 'all' ? gameState.activeGames[0] : selectedGame} 

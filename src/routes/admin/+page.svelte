@@ -4,6 +4,8 @@
   import ConfigForm from '$lib/components/admin/ConfigForm.svelte'
   import RewardDistributionForm from '$lib/components/admin/RewardDistributionForm.svelte';
   import ValidateScoreLarge from '$lib/components/admin/validateScoreLarge.svelte';
+  import BatchActions from '$lib/components/admin/BatchActions.svelte';
+  import RoundDistribution from '$lib/components/admin/RoundDistribution.svelte';
   import type { GameId } from '$lib/types.js';
 
   const walletState = getWalletState();
@@ -18,8 +20,44 @@
   let isVerifier = $derived(walletState.isVerifier);
   let isAdmin = $derived(walletState.isAdmin);
   let isConnected = $derived(!!walletState.address);
+
+
+  /** @type {{ data: import('./$types').PageData }} */
+  let { data } = $props();
 </script>
 
+<div class="container">
+  {#if !walletState.address}
+    <div class="unauthorized">
+      <h1>Admin Panel</h1>
+      <p>Please connect your wallet to access admin features.</p>
+    </div>
+  {:else if !walletState.isAdmin}
+    <div class="unauthorized">
+      <h1>Unauthorized</h1>
+      <p>Only the contract owner can access admin features.</p>
+    </div>
+  {:else}
+    <div class="admin">
+      <h1>Admin Panel</h1>
+      
+      {#if walletState.address}
+        <RoundDistribution account={walletState.address} />
+      {/if}
+      
+      {#if walletState.address}
+        <BatchActions account={walletState.address} />
+      {/if}
+      
+      {#if walletState.address}
+        <ConfigForm account={walletState.address} />
+      {/if}
+      {#if walletState.address}
+        <RewardDistributionForm account={walletState.address} />
+      {/if}
+    </div>
+  {/if}
+</div>
 <div class="container">
   {#if !isConnected}
     <div class="unauthorized">
