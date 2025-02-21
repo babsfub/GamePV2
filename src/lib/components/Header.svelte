@@ -23,7 +23,7 @@
   let isMenuOpen = $state(false);
 
   // États dérivés
-  let isTetrisPage = $derived(currentPath === '/games/tetris');
+  let isTetrisPage = $derived(currentPath == '/games/tetris');
   let activeGames = $derived(gameState.activeGames);
 
   let gameLinks = $derived(activeGames.map(gameId => ({
