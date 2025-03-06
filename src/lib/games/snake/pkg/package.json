@@ -1,0 +1,19 @@
+{
+  "name": "snake-engine",
+  "type": "module",
+  "collaborators": [
+    "RetroGaming Platform Team"
+  ],
+  "description": "A secure WebAssembly Snake game engine for blockchain integration",
+  "version": "0.1.0",
+  "files": [
+    "snake_engine_bg.wasm",
+    "snake_engine.js",
+    "snake_engine.d.ts"
+  ],
+  "main": "snake_engine.js",
+  "types": "snake_engine.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

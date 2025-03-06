@@ -2,32 +2,52 @@
 import { setContext, getContext } from 'svelte';
 import type { GameId, GameConfig, Score, RoundView, TetrisState } from '$lib/types.js';
 
+// Définir le type SnakeState qui est manquant
+interface SnakeState {
+  board: any[][];
+  score: number;
+  level: number;
+  apples_eaten: number;
+  is_game_over: boolean;
+  is_paused: boolean;
+  snake: Array<{x: number, y: number}>;
+  direction: string;
+  apple_position: {x: number, y: number} | null;
+  moves_count: number;
+  last_update: number;
+}
+
 const GAME_STATE_KEY = Symbol('game-state');
 
 export class GameState {
   configs = $state<Record<GameId, GameConfig | null>>({
     snake: null,
-    tetris: null
+    tetris: null,
+    minesweeper: null
   });
 
   currentRounds = $state<Record<GameId, RoundView | null>>({
     snake: null,
-    tetris: null
+    tetris: null,
+    minesweeper: null
   });
 
   scores = $state<Record<GameId, Score[]>>({
     snake: [],
-    tetris: []
+    tetris: [],
+    minesweeper: []
   });
 
   platformFees = $state<Record<GameId, number>>({
     snake: 0,
-    tetris: 0
+    tetris: 0,
+    minesweeper: 0
   });
 
   verifierFees = $state<Record<GameId, number>>({
     snake: 0,
-    tetris: 0
+    tetris: 0,
+    minesweeper: 0
   });
 
   // États dérivés
@@ -92,12 +112,35 @@ export class GameState {
     drop_interval: 0
   });
 
+  // Nouvel état pour Snake
+  snakeState = $state<SnakeState>({
+    board: [],
+    score: 0,
+    level: 1,
+    apples_eaten: 0,
+    is_game_over: false,
+    is_paused: false,
+    snake: [],
+    direction: 'right',
+    apple_position: null,
+    moves_count: 0,
+    last_update: 0
+  });
+
   // États dérivés pour le tetris
   tetrisScores = $derived({
     score: this.tetrisState.score ?? 0,
     level: this.tetrisState.level ?? 1,
     lines: this.tetrisState.lines ?? 0,
     isGameOver: this.tetrisState.is_game_over
+  });
+
+  // États dérivés pour le snake
+  snakeScores = $derived({
+    score: this.snakeState.score ?? 0,
+    level: this.snakeState.level ?? 1,
+    apples: this.snakeState.apples_eaten ?? 0,
+    isGameOver: this.snakeState.is_game_over
   });
 
   // Méthodes pour mettre à jour le state tetris
@@ -144,6 +187,46 @@ export class GameState {
     };
   }
 
+  // Méthodes pour mettre à jour le state snake
+  updateSnakeState(state: Partial<SnakeState>) {
+    this.snakeState = {
+      ...this.snakeState,
+      ...state
+    };
+  }
+
+  updateSnakeScore(score: number) {
+    this.snakeState.score = score;
+  }
+
+  updateSnakeLevel(level: number) {
+    this.snakeState.level = level;
+  }
+
+  updateSnakeApples(apples: number) {
+    this.snakeState.apples_eaten = apples;
+  }
+
+  setSnakeGameOver(isGameOver: boolean) {
+    this.snakeState.is_game_over = isGameOver;
+  }
+
+  resetSnakeState() {
+    this.snakeState = {
+      board: [],
+      score: 0,
+      level: 1,
+      apples_eaten: 0,
+      is_game_over: false,
+      is_paused: false,
+      snake: [],
+      direction: 'right',
+      apple_position: null,
+      moves_count: 0,
+      last_update: 0
+    };
+  }
+
   // Méthodes
   setConfig(gameId: GameId, config: GameConfig | null) {
     this.configs[gameId] = config;
@@ -177,7 +260,7 @@ export class GameState {
   
   getGameMetrics(gameId: GameId) {
     // Maintenant gameMetrics est un objet dérivé, pas une fonction
-    return this.gameMetrics[gameId];
+    return this.gameMetrics[gameId as keyof typeof this.gameMetrics];
   }
 }
 

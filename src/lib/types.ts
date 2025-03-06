@@ -12,7 +12,7 @@ export interface WalletState {
 }
 
 // Base Types
-export type GameId = 'snake' | 'tetris'
+export type GameId = 'snake' | 'tetris' | 'minesweeper';
 
 // Contract Types (Smart Contract Level)
 export interface ContractScore {
@@ -210,6 +210,75 @@ interface TetrisPiece {
   color: number
   x: number
   y: number
+}
+
+// Dans types.ts, ajoutons les types pour Minesweeper
+export interface MinesweeperState {
+  board: Cell[][];
+  score: bigint;
+  mines_remaining: number;
+  cells_revealed: number;
+  is_game_over: boolean;
+  is_victory: boolean;
+  start_time: number;
+  last_move_time: number;
+  consecutive_reveals: number;
+  stake_level: string;
+}
+
+export interface Cell {
+  has_mine: boolean;
+  is_revealed: boolean;
+  is_flagged: boolean;
+  adjacent_mines: number;
+}
+
+export interface MinesweeperScore extends Score {
+  level: bigint;
+  cells_revealed: number;
+  total_moves: number;
+  completion_time: number;
+  is_victory: boolean;
+  moves_hash: string;
+  board_hash: string;
+}
+
+export interface GameEngineFactory {
+  create(params: GameEngineParams): GameEngine;
+  getMetadata(): GameEngineMetadata;
+}
+
+export interface GameEngineParams {
+  width?: number;
+  height?: number;
+  stake?: bigint;
+  difficulty?: string;
+  seed?: string;
+}
+
+export interface GameEngineMetadata extends GameMetadata {
+  useStakeInHash: boolean;
+  requiresGameState: boolean;
+  supportsVerification: boolean;
+  engineParams: GameEngineParams;
+}
+
+export interface BaseGameEngine {
+  get_score_hash: (
+    player_address: string,
+    salt_key: string,
+    block_number: bigint,
+    stake?: bigint
+  ) => Uint8Array;
+
+  get_state: () => any;
+  
+  verify_score: (
+    scoreHash: Uint8Array,
+    player_address: string,
+    block_number: bigint,
+    salt_key: string
+  ) => boolean;
 }
 
 // App Types

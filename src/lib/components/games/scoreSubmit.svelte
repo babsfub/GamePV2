@@ -15,17 +15,17 @@
   import { ScoreService } from '$lib/utils/scoreServices.js';
 
   // Props
-  // Dans ScoreSubmit.svelte
-const {
+const { 
   gameId, 
-  score,
+  score, 
+  isGameOver, 
   onSubmit,
-  isGameOver
 } = $props<{
   gameId: GameId;
   score: number;
-  onSubmit: (stake: string) => Promise<void>;
   isGameOver: boolean;
+  onSubmit: (stake: string) => Promise<void>;
+  minStake: string;
 }>();
   // États globaux
   const walletState = getWalletState();

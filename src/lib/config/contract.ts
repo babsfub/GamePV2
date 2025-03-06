@@ -2,7 +2,7 @@
 import { createPublicClient, createWalletClient, http, custom, webSocket, fallback, type Log } from 'viem'
 import { polygon } from 'viem/chains'
 import { retroGamingABI } from '$lib/contracts/abi.js'
-
+import { Monad_Testnet } from './chains.js'
 // Types pour les événements
 interface CustomLog extends Log {
   args?: {

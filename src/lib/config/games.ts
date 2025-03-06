@@ -1,5 +1,6 @@
 // src/lib/config/games.ts
 import type { GameMetadata } from '$lib/types.js';
+import { DIFFICULTY_LEVELS } from '$lib/components/games/MineSweeper/constants.js';
 
 export const GAMES = {
   snake: {
@@ -37,6 +38,32 @@ export const GAMES = {
     difficulty: 'Intermediate',
     path: '/games/tetris',
     maxScore: 500000
+  },
+  minesweeper: {
+    id: 'minesweeper',
+    title: 'Crypto Mines',
+    description: 'Strategic mine-clearing puzzle with variable difficulty levels and rewards',
+    descriptionLong: `
+      Challenge yourself in this Web3 adaptation of the classic Minesweeper:
+      • Three difficulty levels with increasing rewards
+      • Real-time scoring with time bonuses
+      • Chain reveal multipliers
+      • Strategic flag placement
+      • Competitive tournaments
+      Choose your risk level and compete for bigger rewards as you master each difficulty.
+    `,
+    features: [
+      'Multiple difficulty levels',
+      'Progressive rewards',
+      'Time-based bonuses',
+      'Chain reveal multipliers'
+    ],
+    path: '/games/minesweeper',
+    maxScore: 1000000,
+    imageUrl: '/images/games/minesweeper.png',
+    minStake: DIFFICULTY_LEVELS.beginner.minStake,
+    gradient: 'from-blue-500 to-indigo-600',
+    difficulty: 'Variable'
   }
 } as const satisfies Record<string, GameMetadata>;
 

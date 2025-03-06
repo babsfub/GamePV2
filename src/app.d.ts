@@ -10,12 +10,9 @@ declare global {
         ethereum?: any;
         browser?: true | false;
     }
-    
 }
 
-
-
-// Déclaration du module WASM
+// Déclaration du module WASM pour Tetris
 declare module '$lib/wasm/tetris/pkg/tetris_engine.js' {
     export interface TetrisScoreData {
         score: bigint;
@@ -56,3 +53,47 @@ declare module '$lib/wasm/tetris/pkg/tetris_engine.js' {
     
     export function init(): Promise<void>;
 }
+
+// Déclaration du module WASM pour Snake
+declare module '$lib/games/snake/pkg/snake_engine.js' {
+    export interface JsVerificationResult {
+        readonly valid: boolean;
+        readonly error: string | undefined;
+        readonly final_score: number;
+        free(): void;
+    }
+    
+    export class SnakeEngine {
+        constructor(width: number, height: number);
+        free(): void;
+        get_state(): any;
+        update(timestamp: number): boolean;
+        change_direction(direction: string): boolean;
+        toggle_pause(): void;
+        start(): void;
+        
+        get_score_hash_hex(
+            player_address: string,
+            salt_key: string,
+            block_number: bigint
+        ): string;
+        
+        verify_score_hex(
+            stored_hash_hex: string,
+            player_address: string,
+            block_number: bigint,
+            salt_key: string
+        ): boolean;
+        
+        export_game_data_str(
+            player_address: string,
+            salt_key: string,
+            block_number: bigint
+        ): string;
+        
+        verify_game_data(verification_data: any): JsVerificationResult;
+    }
+    
+    export function init(): Promise<void>;
+}
+

@@ -553,6 +553,8 @@
                     gameId="tetris"
                     score={score}
                     isGameOver={true}
+                    
+                  minStake={gameState.configs?.tetris?.minStake?.toString() ?? '0'}
                     onSubmit={handleSubmitScore}
                   />
                 {:else}
