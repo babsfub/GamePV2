@@ -58,74 +58,72 @@
       '#00FFFF', // S
       '#FFA500'  // Z
   ];
+
   // Fonction de mise à jour des données du jeu
   async function updateGameData() {
-  try {
-    const config = await contractActions.read.getGameConfig('tetris');
-    gameState.setConfig('tetris', config);
+    try {
+      const config = await contractActions.read.getGameConfig('tetris');
+      gameState.setConfig('tetris', config);
 
-    if (config?.active) {
-      const roundData = await contractActions.read.getRoundData(
-        config.currentRound, 
-        'tetris'
-      ) as ContractRoundView;
-      
-      if (roundData.scores.length > 0) {
-        const response = await fetch(`/api/games?gameId=tetris&roundId=${config.currentRound}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch DB data');
-        }
-        const dbScores = await response.json() as TetrisGame[];
+      if (config?.active) {
+        const roundData = await contractActions.read.getRoundData(
+          config.currentRound, 
+          'tetris'
+        ) as ContractRoundView;
         
-        currentRound = {
-          ...roundData,
-          scores: roundData.scores.map(contractScore => {
-            const dbScore = dbScores.find(
-              (s) => s.score_hash === contractScore.scoreHash
-            );
-            
-            return {
-              ...contractScore,
-              transactionHash: dbScore?.transaction_hash as `0x${string}` ?? '0x0',
-              level: dbScore ? 
-                BigInt(dbScore.score) : 
-                BigInt(0),
-              lines: 0, 
-              moves_count: 0,
-              moves_hash: dbScore?.db_hash ?? ''
-            };
-          })
-        };
-      } else {
-        currentRound = {
-          ...roundData,
-          scores: []
-        };
+        if (roundData.scores.length > 0) {
+          const response = await fetch(`/api/games?gameId=tetris&roundId=${config.currentRound}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch DB data');
+          }
+          const dbScores = await response.json() as TetrisGame[];
+          
+          currentRound = {
+            ...roundData,
+            scores: roundData.scores.map(contractScore => {
+              const dbScore = dbScores.find(
+                (s) => s.score_hash === contractScore.scoreHash
+              );
+              
+              return {
+                ...contractScore,
+                transactionHash: dbScore?.transaction_hash as `0x${string}` ?? '0x0',
+                level: dbScore ? 
+                  BigInt(dbScore.score) : 
+                  BigInt(0),
+                lines: 0, 
+                moves_count: 0,
+                moves_hash: dbScore?.db_hash ?? ''
+              };
+            })
+          };
+        } else {
+          currentRound = {
+            ...roundData,
+            scores: []
+          };
+        }
+
+        gameState.setRound('tetris', currentRound);
       }
-
-      gameState.setRound('tetris', currentRound);
+    } catch (err) {
+      console.error('Error updating game data:', err);
+      gameState.setConfig('tetris', null);
+      gameState.setRound('tetris', null);
     }
-  } catch (err) {
-    console.error('Error updating game data:', err);
-    gameState.setConfig('tetris', null);
-    gameState.setRound('tetris', null);
   }
-}
-
-
   
   // Fonctions utilitaires
   function checkMobileView() {
-      if (browser) {
-          mobileView = window.innerWidth <= 768;
-      }
+    if (browser) {
+      mobileView = window.innerWidth <= 768;
+    }
   }
   
   function isMobile() {
-      return browser && (window.innerWidth <= 768 || 'ontouchstart' in window);
+    return browser && (window.innerWidth <= 768 || 'ontouchstart' in window);
   }
   
- 
   // Fonctions de mise à jour du state
   function updateGameState() {
     if (!engine) return;
@@ -175,6 +173,7 @@
     updateGameState();
     startGameLoop();
   }
+
   function drawBlock(x: number, y: number, color: string) {
     if (!ctx) return;
     const xPos = x * BLOCK_SIZE;
@@ -198,17 +197,17 @@
     ctx.lineWidth = 1;
     
     for (let i = 0; i <= BOARD_WIDTH; i++) {
-        ctx.beginPath();
-        ctx.moveTo(i * BLOCK_SIZE, 0);
-        ctx.lineTo(i * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
-        ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(i * BLOCK_SIZE, 0);
+      ctx.lineTo(i * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
+      ctx.stroke();
     }
     
     for (let i = 0; i <= BOARD_HEIGHT; i++) {
-        ctx.beginPath();
-        ctx.moveTo(0, i * BLOCK_SIZE);
-        ctx.lineTo(BOARD_WIDTH * BLOCK_SIZE, i * BLOCK_SIZE);
-        ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, i * BLOCK_SIZE);
+      ctx.lineTo(BOARD_WIDTH * BLOCK_SIZE, i * BLOCK_SIZE);
+      ctx.stroke();
     }
   }
   
@@ -221,45 +220,46 @@
     drawGrid();
   
     tetrisGameState?.board.forEach((row: number[], y: number) => {
-        row.forEach((cell: number, x: number) => {
-            if (cell !== 0) {
-                drawBlock(x, y, COLORS[cell]);
-            }
-        });
+      row.forEach((cell: number, x: number) => {
+        if (cell !== 0) {
+          drawBlock(x, y, COLORS[cell]);
+        }
+      });
     });
   
     if (tetrisGameState?.current_piece) {
-        const piece = tetrisGameState.current_piece;
-        piece.shape.forEach((row: number[], y: number) => {
-            row.forEach((cell: number, x: number) => {
-                if (cell !== 0) {
-                    drawBlock(
-                        piece.x + x,
-                        piece.y + y,
-                        COLORS[piece.piece_type]
-                    );
-                }
-            });
+      const piece = tetrisGameState.current_piece;
+      piece.shape.forEach((row: number[], y: number) => {
+        row.forEach((cell: number, x: number) => {
+          if (cell !== 0) {
+            drawBlock(
+              piece.x + x,
+              piece.y + y,
+              COLORS[piece.piece_type]
+            );
+          }
         });
+      });
     }
   
     if (tetrisGameState?.ghost_piece) {
-        const ghost = tetrisGameState.ghost_piece;
-        ctx.globalAlpha = 0.3;
-        ghost.shape.forEach((row: number[], y: number) => {
-            row.forEach((cell: number, x: number) => {
-                if (cell !== 0) {
-                    drawBlock(
-                        ghost.x + x,
-                        ghost.y + y,
-                        COLORS[ghost.piece_type]
-                    );
-                }
-            });
+      const ghost = tetrisGameState.ghost_piece;
+      ctx.globalAlpha = 0.3;
+      ghost.shape.forEach((row: number[], y: number) => {
+        row.forEach((cell: number, x: number) => {
+          if (cell !== 0) {
+            drawBlock(
+              ghost.x + x,
+              ghost.y + y,
+              COLORS[ghost.piece_type]
+            );
+          }
         });
-        ctx.globalAlpha = 1;
+      });
+      ctx.globalAlpha = 1;
     }
   }
+
   // Gestion de la boucle de jeu
   function startGameLoop() {
     if (!browser) return () => {};
@@ -267,19 +267,19 @@
     let frameId: number | null = null;
   
     const gameLoop = () => {
-        if (engine && !isPaused && !isGameOver) {
-            engine.update(Date.now());
-            updateGameState();
-        }
-        frameId = requestAnimationFrame(gameLoop);
+      if (engine && !isPaused && !isGameOver) {
+        engine.update(Date.now());
+        updateGameState();
+      }
+      frameId = requestAnimationFrame(gameLoop);
     };
   
     gameLoop();
     return () => {
-        if (frameId !== null && browser) {
-            cancelAnimationFrame(frameId);
-            frameId = null;
-        }
+      if (frameId !== null && browser) {
+        cancelAnimationFrame(frameId);
+        frameId = null;
+      }
     };
   }
   
@@ -288,44 +288,43 @@
     if (!engine || isGameOver) return;
 
     const actions: Record<string, () => void> = {
-        ArrowLeft: () => engine?.move_piece(-1),
-        ArrowRight: () => engine?.move_piece(1),
-        ArrowDown: () => engine?.start_soft_drop(),
-        ArrowUp: () => engine?.rotate(),
-        Space: () => engine?.hard_drop(),
-        Escape: () => {
-            if (isPaused) {
-                isPaused = false;
-                engine?.toggle_pause();
-                startGameLoop(); 
-            } else {
-                isPaused = true;
-                engine?.toggle_pause();
-            }
-            updateGameState();
-        },
-        KeyR: () => {
-            if (isGameOver || isPaused) {
-                handleStartNewGame();
-            }
+      ArrowLeft: () => engine?.move_piece(-1),
+      ArrowRight: () => engine?.move_piece(1),
+      ArrowDown: () => engine?.start_soft_drop(),
+      ArrowUp: () => engine?.rotate(),
+      Space: () => engine?.hard_drop(),
+      Escape: () => {
+        if (isPaused) {
+          isPaused = false;
+          engine?.toggle_pause();
+          startGameLoop(); 
+        } else {
+          isPaused = true;
+          engine?.toggle_pause();
         }
+        updateGameState();
+      },
+      KeyR: () => {
+        if (isGameOver || isPaused) {
+          handleStartNewGame();
+        }
+      }
     };
 
     const action = actions[event.code];
     if (action) {
-        event.preventDefault();
-        action();
-        updateGameState();
+      event.preventDefault();
+      action();
+      updateGameState();
     }
-}
-
+  }
   
   function handleKeyup(event: KeyboardEvent) {
     if (!engine) return;
   
     if (event.code === 'ArrowDown') {
-        engine.end_soft_drop();
-        updateGameState();
+      engine.end_soft_drop();
+      updateGameState();
     }
   }
   
@@ -333,27 +332,28 @@
     if (!engine) return;
     
     switch(action) {
-        case 'left':
-            engine.move_piece(-1);
-            break;
-        case 'right': 
-            engine.move_piece(1);
-            break;
-        case 'down':
-            engine.start_soft_drop();
-            break;
-        case 'endDown':
-            engine.end_soft_drop();
-            break;
-        case 'drop':
-            engine.hard_drop();
-            break;
-        case 'rotate':
-            engine.rotate();
-            break;
+      case 'left':
+        engine.move_piece(-1);
+        break;
+      case 'right': 
+        engine.move_piece(1);
+        break;
+      case 'down':
+        engine.start_soft_drop();
+        break;
+      case 'endDown':
+        engine.end_soft_drop();
+        break;
+      case 'drop':
+        engine.hard_drop();
+        break;
+      case 'rotate':
+        engine.rotate();
+        break;
     }
     updateGameState();
   }
+
   // Gestion de la soumission des scores
   const handleSubmitScore = async (stake: string) => {
     if (!engine || !walletState.address || !gameState) {
@@ -450,45 +450,44 @@
     window.addEventListener('resize', checkMobileView);
   
     const initGame = async () => {
-        try {
-            await init();
-            
-            if (!canvas) return;
-            
-            ctx = canvas.getContext('2d')!;
-            canvas.width = BLOCK_SIZE * BOARD_WIDTH;
-            canvas.height = BLOCK_SIZE * BOARD_HEIGHT;
-  
-            engine = new TetrisEngine(BOARD_WIDTH, BOARD_HEIGHT);
-            
-            window.addEventListener('keydown', handleKeydown);
-            window.addEventListener('keyup', handleKeyup);
-            
-            engine.start();
-            updateGameState();
-            
-            return startGameLoop();
-        } catch (err) {
-            console.error('Failed to initialize game:', err);
-            error = 'Failed to start game';
-            return () => {};
-        }
+      try {
+        await init();
+        
+        if (!canvas) return;
+        
+        ctx = canvas.getContext('2d')!;
+        canvas.width = BLOCK_SIZE * BOARD_WIDTH;
+        canvas.height = BLOCK_SIZE * BOARD_HEIGHT;
+
+        engine = new TetrisEngine(BOARD_WIDTH, BOARD_HEIGHT);
+        
+        window.addEventListener('keydown', handleKeydown);
+        window.addEventListener('keyup', handleKeyup);
+        
+        engine.start();
+        updateGameState();
+        
+        return startGameLoop();
+      } catch (err) {
+        console.error('Failed to initialize game:', err);
+        error = 'Failed to start game';
+        return () => {};
+      }
     };
   
     initGame().then(cleanup => {
-        return () => {
-            window.removeEventListener('resize', checkMobileView);
-            window.removeEventListener('keydown', handleKeydown);
-            window.removeEventListener('keyup', handleKeyup);
-            if (cleanup) cleanup();
-            if (engine) {
-                engine.free();
-                engine = null;
-            }
-        };
+      return () => {
+        window.removeEventListener('resize', checkMobileView);
+        window.removeEventListener('keydown', handleKeydown);
+        window.removeEventListener('keyup', handleKeyup);
+        if (cleanup) cleanup();
+        if (engine) {
+          engine.free();
+          engine = null;
+        }
+      };
     });
   });
-  
 </script>
 
 <div class="page-container">
@@ -519,7 +518,6 @@
       </div>
     </div>
 
-      
     <!-- Game Area -->
     <div class="game-area">
       <div class="canvas-container pixel-border-neon crt-effect">
@@ -589,7 +587,7 @@
         {/if}
 
         <!-- Touch Controls -->
-        <div class="touch-controls neon-controls" class:hidden={!browser || !isMobile()}>
+        <div class="touch-controls" class:hidden={!browser || !isMobile()}>
           <button 
             class="touch-minimize" 
             type="button"
@@ -599,26 +597,49 @@
             <span>≡</span>
           </button>
           <div class="touch-row">
-            <button class="touch-btn rotate" ontouchstart={() => handleTouch('rotate')}>
+            <button 
+              class="touch-btn rotate" 
+              type="button"
+              aria-label="Rotate piece"
+              ontouchstart={() => handleTouch('rotate')}
+            >
               <span>↻</span>
             </button>
           </div>
           <div class="touch-row">
-            <button class="touch-btn" ontouchstart={() => handleTouch('left')}>
+            <button 
+              class="touch-btn" 
+              type="button"
+              aria-label="Move left"
+              ontouchstart={() => handleTouch('left')}
+            >
               <span>←</span>
             </button>
-            <button class="touch-btn" 
+            <button 
+              class="touch-btn"
+              type="button"
+              aria-label="Move down"
               ontouchstart={() => handleTouch('down')} 
               ontouchend={() => handleTouch('endDown')}
             >
               <span>↓</span>
             </button>
-            <button class="touch-btn" ontouchstart={() => handleTouch('right')}>
+            <button 
+              class="touch-btn"
+              type="button"
+              aria-label="Move right"
+              ontouchstart={() => handleTouch('right')}
+            >
               <span>→</span>  
             </button>
           </div>
           <div class="touch-row">
-            <button class="touch-btn" ontouchstart={() => handleTouch('drop')}>
+            <button 
+              class="touch-btn"
+              type="button"
+              aria-label="Hard drop"
+              ontouchstart={() => handleTouch('drop')}
+            >
               <span>⤓</span>
             </button>
           </div>
@@ -918,6 +939,91 @@
     cursor: not-allowed;
   }
 
+  /* Touch Controls - Version transparente */
+  .touch-controls {
+    position: fixed;
+    bottom: 10px;
+    right: 10px; /* Positionnement dans le coin inférieur droit */
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    z-index: 100;
+    padding: 8px;
+    background-color: rgba(26, 26, 26, 0.3); /* Fond très transparent */
+    border-radius: 8px;
+    width: auto; /* Largeur automatique plutôt que fixe */
+    max-width: 200px;
+    transition: opacity 0.2s ease;
+    border: 1px solid rgba(74, 222, 128, 0.4); /* Bordure également transparente */
+  }
+
+  .touch-controls.minimized {
+    opacity: 0.3;
+  }
+  
+  .touch-controls.minimized:active {
+    opacity: 1;
+  }
+
+  .touch-minimize {
+    position: absolute;
+    top: -25px;
+    right: 0; /* Aligné à droite */
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(26, 26, 26, 0.5);
+    border: 1px solid rgba(74, 222, 128, 0.5);
+    color: white;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 101;
+    padding: 0;
+  }
+
+  .touch-controls.hidden {
+    display: none;
+  }
+
+  .touch-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .touch-btn {
+    width: 45px; /* Taille réduite */
+    height: 45px;
+    border-radius: 50%;
+    background: rgba(26, 26, 26, 0.6); /* Semi-transparent */
+    border: 2px solid rgba(74, 222, 128, 0.7);
+    color: white;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    padding: 0;
+  }
+
+  .touch-btn:active {
+    background: rgba(74, 222, 128, 0.4);
+  }
+
+  .touch-btn.rotate {
+    background: rgba(26, 26, 26, 0.6);
+    border-color: rgba(168, 85, 247, 0.7);
+  }
+
+  .touch-btn.rotate:active {
+    background: rgba(168, 85, 247, 0.4);
+  }
+
   /* Additional Sections */
   .leaderboard-section,
   .validation-section {
@@ -981,7 +1087,7 @@
     /* Ajustements pour le canvas en mobile */
     .canvas-container {
       padding: 1rem;
-      margin-bottom: 70px; /* Espace supplémentaire en bas pour que les contrôles n'obstruent pas */
+      margin-bottom: 0; /* Pas besoin d'espace supplémentaire, les contrôles sont dans le coin */
     }
 
     canvas {
