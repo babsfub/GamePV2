@@ -404,6 +404,7 @@
       const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
 
       await ScoreService.submitScore({
+        gameId: 'tetris',
         gameState: tetrisGameState,
         playerAddress: walletState.address,
         score: BigInt(tetrisGameState?.score ?? 0), 
@@ -488,214 +489,246 @@
     });
   });
   
-  </script>
-  
-  
-  <div class="page-container">
-    <div class="game-container">
-      <!-- Left Panel -->
-      <div class="game-panel left-panel">
-        <div class="stats-section">
-          <div class="stats-grid">
-            <div class="stat-item">
-              <span class="stat-label">Score</span>
-              <span class="stat-value">{score}</span>
-              
-            
-              <span class="stat-label">Level</span>
-              <span class="stat-value">{level}</span>
-            
-              <span class="stat-label">Lines</span>
-              <span class="stat-value">{lines}</span>
-            </div>
-            </div>
-          </div>
-        </div>
-  
-        
-  
-      <!-- Game Area -->
-      <div class="game-area">
-        <div class="canvas-container">
-          <canvas 
-            bind:this={canvas}
-            class:game-over={isGameOver}
-          ></canvas>
-  
-          {#if isPaused}
-            <div class="overlay">
-              <div class="overlay-content">
-                <h2>Game Paused</h2>
-                <p>Press ESC to resume</p>
-                <button 
-                  class="resume-button"
-                  onclick={() => {
-                    isPaused = false;
-                    engine?.toggle_pause();
-                    startGameLoop();
-                    updateGameState();
-                  }}
-                >
-                  Resume Game
-                </button>
-              </div>
-            </div>
-          {/if}
-    
-          {#if isGameOver}
-            <div class="overlay">
-              <div class="overlay-content">
-                <h2>Game Over!</h2>
-                <p>Score: {score}</p>
-                {#if error}
-                  <div class="error-message">{error}</div>
-                {/if}
-                
-                {#if walletState.address}
-                  <ScoreSubmit
-                    gameId="tetris"
-                    score={score}
-                    isGameOver={true}
-                    
-                  minStake={gameState.configs?.tetris?.minStake?.toString() ?? '0'}
-                    onSubmit={handleSubmitScore}
-                  />
-                {:else}
-                  <div class="wallet-warning">
-                    Connect wallet to submit scores
-                  </div>
-                {/if}
+</script>
 
-                <button 
-                  class="retry-button"
-                  onclick={handleStartNewGame}
-                  disabled={submitting}
-                >
-                  Play Again
-                </button>
-              </div>
-            </div>
-          {/if}
-  
-          <!-- Touch Controls -->
-          <div class="touch-controls" class:hidden={!browser || !isMobile()}>
-            <div class="touch-row">
-              <button class="touch-btn rotate" ontouchstart={() => handleTouch('rotate')}>
-                <span>↻</span>
-              </button>
-            </div>
-            <div class="touch-row">
-              <button class="touch-btn" ontouchstart={() => handleTouch('left')}>
-                <span>←</span>
-              </button>
-              <button class="touch-btn" 
-                ontouchstart={() => handleTouch('down')} 
-                ontouchend={() => handleTouch('endDown')}
-              >
-                <span>↓</span>
-              </button>
-              <button class="touch-btn" ontouchstart={() => handleTouch('right')}>
-                <span>→</span>  
-              </button>
-            </div>
-            <div class="touch-row">
-              <button class="touch-btn" ontouchstart={() => handleTouch('drop')}>
-                <span>⤓</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-  
-      <!-- Right Panel -->
-      <div class="game-panel right-panel" class:hidden={isMobile()}>
-        <div class="controls-section">
-          <h3 class="section-title">Controls</h3>
-          <ul class="controls-list">
-            <li class="control-item">
-              <span>Move</span>
-              <span class="key">← →</span>
-            </li>
-            <li class="control-item">
-              <span>Rotate</span>
-              <span class="key">↑</span>
-            </li>
-            <li class="control-item">
-              <span>Soft Drop</span>
-              <span class="key">↓</span>
-            </li>
-            <li class="control-item">
-              <span>Hard Drop</span>
-              <span class="key">Space</span>
-            </li>
-            <li class="control-item">
-              <span>Pause</span>
-              <span class="key">Esc</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  
-    <!-- Leaderboard Section -->
-    <div class="leaderboard-section">
-      <LeaderBoard selectedGame="tetris" />
-    </div>
-  
-    <!-- Validation Section -->
-    <div class="validation-section">
-      {#if walletState.isVerifier}
-        <ValidateScore selectedGame="tetris" />
-      {/if}
-    </div>
-
+<div class="page-container">
+  <!-- Titre de jeu en haut de page avec effet néon -->
+  <div class="game-title-container">
+    <h1 class="neon-text-purple" data-text="Tetris">Tetris</h1>
   </div>
+
+  <div class="game-container">
+    <!-- Left Panel -->
+    <div class="game-panel left-panel pixel-border">
+      <div class="stats-section">
+        <h3 class="panel-title">Stats</h3>
+        <div class="stats-grid stat-animated">
+          <div class="stat-item">
+            <span class="stat-label">Score</span>
+            <span class="stat-value">{score}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Level</span>
+            <span class="stat-value">{level}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Lines</span>
+            <span class="stat-value">{lines}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      
+    <!-- Game Area -->
+    <div class="game-area">
+      <div class="canvas-container pixel-border-neon crt-effect">
+        <!-- Coins d'arcade décoratifs -->
+        <div class="arcade-corner top-left"></div>
+        <div class="arcade-corner top-right"></div>
+        <div class="arcade-corner bottom-left"></div>
+        <div class="arcade-corner bottom-right"></div>
+
+        <canvas 
+          bind:this={canvas}
+          class:game-over={isGameOver}
+        ></canvas>
+
+        {#if isPaused}
+          <div class="overlay">
+            <div class="overlay-content pixel-border">
+              <h2 class="neon-text-cyan">Game Paused</h2>
+              <p>Press ESC to resume</p>
+              <button 
+                class="resume-button"
+                onclick={() => {
+                  isPaused = false;
+                  engine?.toggle_pause();
+                  startGameLoop();
+                  updateGameState();
+                }}
+              >
+                Resume Game
+              </button>
+            </div>
+          </div>
+        {/if}
   
-  <style>
-    /* Layout Container */
-    .page-container {
-      width: 100%;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      gap: 2rem;
-      padding: 2rem var(--spacing-screen-safe);
-    }
-  
-    .game-container {
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      gap: 2rem;
-      width: 100%;
-      min-width: 80vw;
-      max-width: var(--max-width-game);
-      margin: 0 auto;
-    }
-  
-    /* Game Panels */
-    .game-panel {
-      background: var(--color-surface);
-      border-radius: 1rem;
-      overflow: hidden;
-      height: fit-content;
-      min-width: 180px;
-    }
-     /* Stats Section */
+        {#if isGameOver}
+          <div class="overlay">
+            <div class="overlay-content pixel-border">
+              <h2 class="neon-text-red">Game Over!</h2>
+              <p>Score: <span class="highlight">{score}</span></p>
+              {#if error}
+                <div class="error-message">{error}</div>
+              {/if}
+              
+              {#if walletState.address}
+                <ScoreSubmit
+                  gameId="tetris"
+                  score={score}
+                  isGameOver={true}
+                  minStake={gameState.configs?.tetris?.minStake?.toString() ?? '0'}
+                  onSubmit={handleSubmitScore}
+                />
+              {:else}
+                <div class="wallet-warning">
+                  Connect wallet to submit scores
+                </div>
+              {/if}
+
+              <button 
+                class="retry-button"
+                onclick={handleStartNewGame}
+                disabled={submitting}
+              >
+                Play Again
+              </button>
+            </div>
+          </div>
+        {/if}
+
+        <!-- Touch Controls -->
+        <div class="touch-controls neon-controls" class:hidden={!browser || !isMobile()}>
+          <button 
+            class="touch-minimize" 
+            type="button"
+            aria-label="Toggle touch controls visibility"
+            onclick={() => document.querySelector('.touch-controls')?.classList.toggle('minimized')}
+          >
+            <span>≡</span>
+          </button>
+          <div class="touch-row">
+            <button class="touch-btn rotate" ontouchstart={() => handleTouch('rotate')}>
+              <span>↻</span>
+            </button>
+          </div>
+          <div class="touch-row">
+            <button class="touch-btn" ontouchstart={() => handleTouch('left')}>
+              <span>←</span>
+            </button>
+            <button class="touch-btn" 
+              ontouchstart={() => handleTouch('down')} 
+              ontouchend={() => handleTouch('endDown')}
+            >
+              <span>↓</span>
+            </button>
+            <button class="touch-btn" ontouchstart={() => handleTouch('right')}>
+              <span>→</span>  
+            </button>
+          </div>
+          <div class="touch-row">
+            <button class="touch-btn" ontouchstart={() => handleTouch('drop')}>
+              <span>⤓</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="game-panel right-panel pixel-border" class:hidden={isMobile()}>
+      <div class="controls-section">
+        <h3 class="panel-title">Controls</h3>
+        <ul class="controls-list">
+          <li class="control-item">
+            <span>Move</span>
+            <span class="key">← →</span>
+          </li>
+          <li class="control-item">
+            <span>Rotate</span>
+            <span class="key">↑</span>
+          </li>
+          <li class="control-item">
+            <span>Soft Drop</span>
+            <span class="key">↓</span>
+          </li>
+          <li class="control-item">
+            <span>Hard Drop</span>
+            <span class="key">Space</span>
+          </li>
+          <li class="control-item">
+            <span>Pause</span>
+            <span class="key">Esc</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaderboard Section -->
+  <div class="leaderboard-section">
+    <h2 class="section-title neon-text-multi">Leaderboard</h2>
+    <LeaderBoard selectedGame="tetris" />
+  </div>
+
+  <!-- Validation Section -->
+  <div class="validation-section">
+    {#if walletState.isVerifier}
+      <ValidateScore selectedGame="tetris" />
+    {/if}
+  </div>
+</div>
+
+<style>
+  /* Layout Container */
+  .page-container {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    padding: 2rem var(--spacing-screen-safe);
+    background-image: var(--grid-effect);
+  }
+
+  .game-title-container {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .game-container {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2rem;
+    width: 100%;
+    max-width: var(--max-width-game);
+    margin: 0 auto;
+  }
+
+  /* Game Panels */
+  .game-panel {
+    background: var(--color-surface);
+    border-radius: 1rem;
+    overflow: hidden;
+    height: fit-content;
+    min-width: 180px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
+  }
+
+  .panel-title {
+    text-align: center;
+    color: var(--color-primary);
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    text-shadow: 0 0 5px rgba(74, 222, 128, 0.5);
+  }
+
+  /* Stats Section */
   .stats-section {
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-bottom: 10px;
-    padding: 1rem;
+    padding: 1.5rem;
     width: 100%;
   }
 
   .stats-grid {
-    align-items: center;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.25rem;
+    grid-template-columns: repeat(1, 1fr);
+    gap: 0.75rem;
     width: 100%;
   }
 
@@ -703,18 +736,23 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 0.5rem;
-    background: rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+    background: var(--color-surface-alt);
     border-radius: 0.5rem;
     width: 100%;
-    min-height: 80px;
     box-sizing: border-box;
+    transition: transform 0.2s ease;
+  }
+
+  .stat-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 8px rgba(74, 222, 128, 0.3);
   }
 
   .stat-value {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     font-weight: 600;
-    color: var(--color-text);
+    color: var(--color-primary);
     min-width: 4ch;
     text-align: center;
   }
@@ -725,244 +763,229 @@
     text-transform: uppercase;
     width: 100%;
     text-align: center;
+    margin-bottom: 0.25rem;
   }
-    
 
+  .highlight {
+    color: var(--color-primary);
+    font-weight: 600;
+  }
 
-  
-    .wallet-warning {
-      padding: 0.75rem;
-      background: rgba(234, 179, 8, 0.1);
-      color: rgb(234, 179, 8);
-      border-radius: 0.5rem;
-      text-align: center;
-      font-size: 0.875rem;
-    }
-  
-    /* Game Area */
-    .game-area {
-      position: relative;
-      display: flex;
-      justify-content: center;
-    }
-  
-    .canvas-container {
-      position: relative;
-      background: var(--color-surface);
-      padding: 1rem;
-      border-radius: 1rem;
-      width: 100%;
-    }
-  
-    canvas {
-      display: block;
-      width: 100%;
-      height: auto;
-      border: 2px solid #fff;
-    }
-  
-    canvas.game-over {
-      opacity: 0.5;
-    }
-  
-    /* Overlay */
-    .overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0, 0, 0, 0.8);
-      border-radius: 0.5rem;
-    }
-  
-    .overlay-content {
-      text-align: center;
-      padding: 2rem;
-      background: var(--color-surface);
-      border-radius: 1rem;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-      min-width: 280px;
-    }
-  
-    .overlay-content {
-      margin: 1rem 0;
-      padding: 1rem;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 0.5rem;
-    }
-  
-    /* Controls Section */
-    .controls-section {
-      padding: 1.5rem;
-    }
-  
-    .section-title {
-      font-size: 1.125rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
-      color: var(--color-text);
-    }
-  
-    .controls-list {
-      display: grid;
-      gap: 0.5rem;
-    }
-  
-    .control-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.5rem 0.75rem;
-      background: rgba(0, 0, 0, 0.2);
-      border-radius: 0.375rem;
-      font-size: 0.875rem;
-    }
-  
-    .key {
-      padding: 0.25rem 0.5rem;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 0.25rem;
-      font-family: monospace;
-    }
-  
-    /* Buttons */
-    .retry-button,
-    .resume-button {
-      margin-top: 1rem;
-      padding: 0.75rem 1.5rem;
-      background: var(--color-primary);
-      color: white;
-      border: none;
-      border-radius: 0.5rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-  
-    .retry-button:hover:not(:disabled),
-    .resume-button:hover:not(:disabled) {
-      opacity: 0.9;
-      transform: translateY(-1px);
-    }
-  
-    .retry-button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  
-    /* Touch Controls */
-    .touch-controls {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
+  .wallet-warning {
+    padding: 0.75rem;
+    background: rgba(234, 179, 8, 0.1);
+    color: rgb(234, 179, 8);
+    border-radius: 0.5rem;
+    text-align: center;
+    font-size: 0.875rem;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    margin: 1rem 0;
+  }
+
+  /* Game Area */
+  .game-area {
+    position: relative;
+    display: flex;
+    justify-content: center;
+  }
+
+  .canvas-container {
+    position: relative;
+    background: var(--color-surface);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    width: 100%;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 3px solid var(--color-primary);
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+    image-rendering: pixelated; /* Pour un rendu plus net des blocs */
+  }
+
+  canvas.game-over {
+    opacity: 0.5;
+  }
+
+  /* Overlay */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.85);
+    border-radius: 0.5rem;
+    z-index: 10;
+  }
+
+  .overlay-content {
+    text-align: center;
+    padding: 2rem;
+    background: var(--color-surface);
+    border-radius: 1rem;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    min-width: 280px;
+    z-index: 20;
+  }
+
+  .error-message {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--color-error);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  /* Controls Section */
+  .controls-section {
+    padding: 1.5rem;
+  }
+
+  .section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: var(--color-text);
+  }
+
+  .controls-list {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0;
+    list-style-type: none;
+  }
+
+  .control-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface-alt);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+  }
+
+  .control-item:hover {
+    background: var(--color-surface-lighter);
+    transform: translateX(2px);
+  }
+
+  .key {
+    padding: 0.4rem 0.6rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 0.25rem;
+    font-family: monospace;
+    color: var(--color-primary);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+  }
+
+  /* Buttons */
+  .retry-button,
+  .resume-button {
+    margin-top: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--color-primary);
+    color: var(--color-bg);
+    border: none;
+    border-radius: 0.5rem;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .retry-button:hover:not(:disabled),
+  .resume-button:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 0 10px var(--color-primary);
+  }
+
+  .retry-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Additional Sections */
+  .leaderboard-section,
+  .validation-section {
+    width: 100%;
+    max-width: var(--max-width-game);
+    margin: 0 auto;
+    padding: 1rem 0;
+  }
+
+  .validation-section {
+    margin-top: 2rem;
+  }
+
+  /* Responsive Design */
+  @media (max-width: 1200px) {
+    .game-container {
       flex-direction: column;
-      gap: 10px;
-      z-index: 100;
-      padding: 10px;
+      align-items: center;
+      gap: 1.5rem;
     }
-  
-    .touch-controls.hidden {
+
+    .game-panel {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    canvas {
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 80vh;
+    }
+
+    .stats-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .page-container {
+      padding: 1rem;
+    }
+
+    .left-panel {
       display: none;
     }
-  
-    .touch-row {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-    }
-  
-    .touch-btn {
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.2);
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      color: white;
-      font-size: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      touch-action: manipulation;
-      user-select: none;
-    }
-  
-    .touch-btn:active {
-      background: rgba(255, 255, 255, 0.3);
-    }
-  
-    .touch-btn.rotate {
-      background: rgba(var(--color-primary-rgb), 0.3);
-    }
-  
-    /* Additional Sections */
-    .leaderboard-section,
-    .validation-section {
-      width: 100%;
-      max-width: var(--max-width-game);
-      margin: 0 auto;
-      padding: 0 var(--spacing-screen-safe);
-    }
-  
-    .validation-section {
-      margin-top: 2rem;
-    }
-  
-    /* Responsive Design */
-    @media (max-width: 1200px) {
-      .game-container {
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-        max-width: 60vw;
-      }
-  
-      .game-panel {
-        width: 100%;
-        max-width: 600px;
-        margin: 0 auto;
-      }
-  
-      canvas {
-        width: auto;
-        height: auto;
-        max-width: 100vw;
-        max-height: 100vh;
-      }
-  
-      .stats-section {
-        flex-direction: row;
-        justify-content: space-around;
-      }
-    }
-  
-    @media (max-width: 768px) {
-      .page-container {
-        padding: 1rem;
-      }
 
-      .left-panel {
-        display: none;
-      }
-  
-      .right-panel {
-        display: none;
-      }
-  
-      .game-panel {
-        margin: 0;
-      }
-  
-      .touch-controls {
-        display: flex;
-      }
+    .right-panel {
+      display: none;
     }
-  
-    @media (min-width: 769px) {
-      .touch-controls {
-        display: none;
-      }
+
+    .game-panel {
+      margin: 0;
     }
-  </style>
+
+    .game-title-container h1 {
+      font-size: 2.5rem;
+    }
+
+    /* Ajustements pour le canvas en mobile */
+    .canvas-container {
+      padding: 1rem;
+      margin-bottom: 70px; /* Espace supplémentaire en bas pour que les contrôles n'obstruent pas */
+    }
+
+    canvas {
+      border-width: 2px; /* Bordure plus fine sur mobile */
+    }
+  }
+</style>

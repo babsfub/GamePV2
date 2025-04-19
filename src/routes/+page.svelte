@@ -88,16 +88,16 @@
 </svelte:head>
 
 <main class="home-container">
-  <!-- Hero Section avec effet néon authentique style arcade -->
+  <!-- Hero Section avec effet néon authentique style arcade et couleurs alternantes -->
   <section class="hero-section arcade-bg pixel-border-neon slide-up">
-    <!-- Coins d'arcade décoratifs -->
+    <!-- Coins d'arcade décoratifs lumineux -->
     <div class="arcade-corner top-left"></div>
     <div class="arcade-corner top-right"></div>
     <div class="arcade-corner bottom-left"></div>
     <div class="arcade-corner bottom-right"></div>
     
-    <!-- Titre avec effet néon -->
-    <h1 class="neon-text">Fega</h1>
+    <!-- Titre avec effet néon alternant les couleurs, tout en préservant la classe hero-title -->
+    <h1 class="hero-title neon-text-cycle" data-text="Fega">Fega</h1>
     <p class="hero-subtitle">Your destination for innovative free Web3 arcade games!</p>
     <div class="hero-description">
       <p>Step into a world where classic gaming meets blockchain innovation. Play for free, compete for high scores, and earn real rewards in our revolutionary gaming platform!</p>
@@ -108,19 +108,19 @@
   <section class="features-section slide-up">
     <h2 class="section-title">How It Works</h2>
     <div class="features-grid">
-      <div class="feature-card arcade-bg">
+      <div class="feature-card bg-glass">
         <h3>Free to Play</h3>
         <p>Enjoy all our games with no entry fee. Have fun and choose when to join the competitive rounds.</p>
       </div>
-      <div class="feature-card arcade-bg">
+      <div class="feature-card bg-glass">
         <h3>Flexible Stakes</h3>
         <p>Submit your score with a variable stake to join the competition. All stakes contribute to the round's reward pool.</p>
       </div>
-      <div class="feature-card arcade-bg">
+      <div class="feature-card bg-glass">
         <h3>Exciting Rounds</h3>
         <p>23.5-hour rounds where top players share the prize pool. First place typically earns over 50% of the pool.</p>
       </div>
-      <div class="feature-card arcade-bg">
+      <div class="feature-card bg-glass">
         <h3>Web3 Ready</h3>
         <p>Simply connect your digital wallet to start your journey. Your transactions and rewards are secured by blockchain.</p>
       </div>
@@ -141,24 +141,29 @@
   <section class="benefits-section slide-up">
     <h2 class="section-title">Why Choose Fega?</h2>
     <div class="benefits-grid">
-      <div class="benefit-card arcade-bg">
+      <div class="benefit-card bg-glass">
         <h3>Attractive Rewards</h3>
         <p>Showcase your skills and win real rewards. Top players earn substantial prizes from each round.</p>
       </div>
-      <div class="benefit-card arcade-bg">
+      <div class="benefit-card bg-glass">
         <h3>Passionate Community</h3>
         <p>Join a growing community of competitive gamers. Fair play and exciting challenges await.</p>
       </div>
-      <div class="benefit-card arcade-bg">
+      <div class="benefit-card bg-glass">
         <h3>Security & Innovation</h3>
         <p>Blockchain technology ensures transparent and secure transactions for all your earnings.</p>
       </div>
     </div>
   </section>
 
-  <!-- Call to Action -->
-  <section class="cta-section arcade-bg pixel-border-neon text-center p-8 my-16 slide-up">
-    <h2 class="text-2xl font-bold mb-4 neon-text-purple" style="font-size: 2rem;">Ready to Play?</h2>
+  <!-- Call to Action avec effet néon orange -->
+  <section class="cta-section bg-glass pixel-border-neon text-center p-8 my-16 slide-up">
+    <div class="arcade-corner top-left"></div>
+    <div class="arcade-corner top-right"></div>
+    <div class="arcade-corner bottom-left"></div>
+    <div class="arcade-corner bottom-right"></div>
+    
+    <h2 class="text-2xl font-bold mb-4 neon-text-orange" style="font-size: 2rem;">Ready to Play?</h2>
     <p class="text-gray-300 mb-6">Connect your wallet, set your high scores, and prove you're the best in this unique gaming universe!</p>
   </section>
 
@@ -238,10 +243,6 @@
     .benefits-grid {
       grid-template-columns: 1fr;
       gap: 1rem;
-    }
-
-    .neon-text {
-      font-size: 2.5rem;
     }
   }
 </style>
