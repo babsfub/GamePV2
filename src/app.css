@@ -1,958 +1,1431 @@
-@import 'tailwindcss/utilities';
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-
-/* Importation des polices Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Roboto+Mono:wght@400;600&display=swap');
-
-:root {  
-  /* Couleurs principales selon la charte graphique */
-  --color-bg: #1a1a1a;               /* Charcoal Noir */
-  --color-primary: #4ade80;          /* Vert néon */
-  --color-primary-hover: #6ee7b7;    /* Vert néon plus clair pour hover */
-  --color-secondary-1: #a855f7;      /* Violet néon */
-  --color-secondary-2: #38bdf8;      /* Cyan néon */
-  --color-secondary-3: #ec4899;      /* Fuchsia pixel */
-  --color-text: #e5e5e5;             /* Gris clair */
-  --color-text-secondary: #94A3B8;   /* Gris plus sombre */
-  
-  /* Couleurs d'interface */
-  --color-surface: #21212b;          /* Surface plus légère que le fond */
-  --color-surface-alt: #2a2a36;      /* Surface alternative */
-  --color-surface-lighter: #313140;  /* Surface plus claire pour hover */
-  
-  /* Couleurs fonctionnelles */
-  --color-error: #ef4444;            /* Rouge pour erreurs */
-  --color-success: #22c55e;          /* Vert pour succès */
-  --color-warning: #eab308;          /* Jaune pour avertissements */
-  
-  /* Espacements et tailles */
-  --spacing-screen-safe: 20px;
-  --max-width-game: 1200px;
-  
-  /* Effets de néon */
-  --neon-primary-glow: 0 0 5px rgba(74, 222, 128, 0.5);
-  --neon-secondary-glow: 0 0 5px rgba(168, 85, 247, 0.5);
-  --neon-border: 1px solid rgba(74, 222, 128, 0.8);
-}
-
-/* Styles globaux */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-html {
-  /* Éviter le rebond sur iOS */
-  height: 100%;
-  overflow: hidden;
-}
-
-body {
-  height: 100%;
-  overflow: auto;
-  margin: 0;
-  padding: 0;
-  background-color: var(--color-bg);
-  color: var(--color-text);
-  font-family: 'VT323', 'Roboto Mono', monospace;
-  font-size: 18px;
-  line-height: 1.5;
-  -webkit-font-smoothing: none; /* Pour un rendu plus pixelisé */
-  -webkit-tap-highlight-color: transparent;
-  overscroll-behavior: none; /* Éviter le pull-to-refresh */
-}
-
-/* Typographie */
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Press Start 2P', cursive;
-  line-height: 1.3;
-  letter-spacing: 0.5px;
-  margin: 0 0 1rem 0;
-  text-transform: uppercase;
-}
-
-h1 {
-  font-size: 1.75rem;
-  text-shadow: 0 0 8px var(--color-primary);
-  margin-bottom: 2rem;
-}
-
-h2 {
-  font-size: 1.25rem;
-  color: var(--color-primary);
-}
-
-h3 {
-  font-size: 1rem;
-  color: var(--color-secondary-1);
-}
-
-/* Effet de clignotement pour textes importants */
-.blink {
-  animation: blink 1.5s step-end infinite;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-/* Conteneurs */
-.app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--color-bg);
-  /* Effet de scanlines pour l'ambiance écran CRT */
-  background-image: 
-    linear-gradient(
-      0deg, 
-      rgba(0, 0, 0, 0.1) 1px, 
-      transparent 1px
-    );
-  background-size: 100% 2px;
-}
-
-.page-container {
-  flex: 1;
-  width: 100%;
-  max-width: var(--max-width-game);
-  margin: 0 auto;
-  padding: 1rem var(--spacing-screen-safe);
-  display: flex;
-  flex-direction: column;
-}
-
-.main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding-bottom: env(safe-area-inset-bottom, 0);
-}
-
-/* Contenants et cartes */
-.card, 
-.section,
-.container {
-  background-color: var(--color-surface);
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-  margin-bottom: 1.5rem;
-  border: var(--neon-border);
-  position: relative;
-  overflow: hidden;
-}
-
-/* Effet de bordure pixelisée */
-.pixel-border {
-  position: relative;
-}
-
-.pixel-border::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  border: 2px solid var(--color-primary);
-  z-index: -1;
-  clip-path: polygon(
-    0% 5px, 5px 5px, 5px 0%, calc(100% - 5px) 0%, calc(100% - 5px) 5px, 100% 5px,
-    100% calc(100% - 5px), calc(100% - 5px) calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 5px calc(100% - 5px), 0% calc(100% - 5px)
-  );
-}
-
-/* Formulaires */
-input, 
-select, 
-textarea {
-  background-color: var(--color-surface-alt);
-  color: var(--color-text);
-  border: 1px solid var(--color-surface-lighter);
-  padding: 0.75rem 1rem;
-  border-radius: 0.25rem;
-  font-family: 'VT323', 'Roboto Mono', monospace;
-  font-size: 1rem;
-}
-
-input:focus, 
-select:focus, 
-textarea:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: var(--neon-primary-glow);
-}
-
-/* Boutons */
-button {
-  font-family: 'Press Start 2P', cursive;
-  font-size: 0.75rem;
-  background-color: var(--color-primary);
-  color: var(--color-bg);
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: var(--neon-primary-glow);
-  text-transform: uppercase;
-  position: relative;
-  overflow: hidden;
-}
-
-button:before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(255, 255, 255, 0.2),
-    transparent
-  );
-  transition: left 0.5s;
-}
-
-button:hover:before {
-  left: 100%;
-}
-
-button:hover {
-  background-color: var(--color-primary-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 0 10px var(--color-primary);
-}
-
-button:active {
-  transform: translateY(1px);
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Navigation */
-.footer {
-  padding: 1rem;
-  text-align: center;
-  color: var(--color-text-secondary);
-  background-color: var(--color-surface);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  font-family: 'VT323', monospace;
-  font-size: 0.9rem;
-  padding-bottom: env(safe-area-inset-bottom, 1rem);
-}
-
-/* Tables */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: var(--color-surface);
-  border-radius: 0.5rem;
-  overflow: hidden;
-  margin: 1rem 0;
-}
-
-th {
-  background-color: var(--color-surface-alt);
-  color: var(--color-primary);
-  font-family: 'Press Start 2P', cursive;
-  font-size: 0.7rem;
-  padding: 0.75rem;
-  text-align: left;
-  text-transform: uppercase;
-}
-
-td {
-  padding: 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-tr:hover {
-  background-color: var(--color-surface-lighter);
-}
-
-/* Messages d'état */
-.error {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: var(--color-error);
-  border-left: 3px solid var(--color-error);
-  padding: 0.75rem 1rem;
-  border-radius: 0.25rem;
-  margin: 1rem 0;
-}
-
-.success {
-  background-color: rgba(34, 197, 94, 0.1);
-  color: var(--color-success);
-  border-left: 3px solid var(--color-success);
-  padding: 0.75rem 1rem;
-  border-radius: 0.25rem;
-  margin: 1rem 0;
-}
-
-.warning {
-  background-color: rgba(234, 179, 8, 0.1);
-  color: var(--color-warning);
-  border-left: 3px solid var(--color-warning);
-  padding: 0.75rem 1rem;
-  border-radius: 0.25rem;
-  margin: 1rem 0;
-}
-
-/* Toasts */
-.toasts {
-  position: fixed;
-  bottom: env(safe-area-inset-bottom, 1rem);
-  right: env(safe-area-inset-right, 1rem);
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  z-index: 100;
-}
-
-.toast {
-  padding: 0.75rem 1rem;
-  background-color: var(--color-primary);
-  color: var(--color-bg);
-  border-radius: 0.25rem;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  max-width: 90vw;
-  animation: slideIn 0.3s ease-out;
-  font-family: 'VT323', monospace;
-  font-size: 1rem;
-}
-
-.toast.error {
-  background-color: var(--color-error);
-  border-left: none;
-}
-
-.toast.warning {
-  background-color: var(--color-warning);
-  border-left: none;
-}
-
-.toast.success {
-  background-color: var(--color-success);
-  border-left: none;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-/* Hero Section */
-.hero-section {
-  text-align: center;
-  padding: 2rem 0;
-  margin-bottom: 2rem;
-  position: relative;
-}
-
-.hero-section h1 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  text-shadow: 0 0 10px var(--color-primary);
-}
-
-.hero-section p {
-  font-size: 1.1rem;
-  color: var(--color-text-secondary);
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-/* Coin d'arcade pixelisé */
-.pixel-corner {
-  position: absolute;
-  width: 15px;
-  height: 15px;
-}
-
-.pixel-corner.top-left {
-  top: 0;
-  left: 0;
-  border-top: 3px solid var(--color-primary);
-  border-left: 3px solid var(--color-primary);
-}
-
-.pixel-corner.top-right {
-  top: 0;
-  right: 0;
-  border-top: 3px solid var(--color-primary);
-  border-right: 3px solid var(--color-primary);
-}
-
-.pixel-corner.bottom-left {
-  bottom: 0;
-  left: 0;
-  border-bottom: 3px solid var(--color-primary);
-  border-left: 3px solid var(--color-primary);
-}
-
-.pixel-corner.bottom-right {
-  bottom: 0;
-  right: 0;
-  border-bottom: 3px solid var(--color-primary);
-  border-right: 3px solid var(--color-primary);
-}
-
-/* Jeux */
-.games-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
-  margin: 1.5rem 0;
-}
-
-.game-card {
-  background-color: var(--color-surface);
-  border-radius: 0.5rem;
-  overflow: hidden;
-  transition: transform 0.2s ease;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  border: var(--neon-border);
-}
-
-.game-card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--neon-primary-glow);
-}
-
-.game-card img {
-  width: 100%;
-  height: 150px;
-  object-fit: cover;
-}
-
-.game-card-content {
-  padding: 1.25rem;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.game-card h2 {
-  font-family: 'Press Start 2P', cursive;
-  font-size: 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.game-card p {
-  font-size: 0.9rem;
-  color: var(--color-text-secondary);
-  margin-bottom: 1rem;
-  flex: 1;
-}
-
-.game-info {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.game-info span {
-  display: flex;
-  align-items: center;
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-}
-
-.game-info svg {
-  width: 1rem;
-  height: 1rem;
-  margin-right: 0.25rem;
-  fill: var(--color-primary);
-}
-
-.game-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  margin-top: auto;
-}
-
-/* Zone de jeu */
-.game-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
-  width: 100%;
-  max-width: var(--max-width-game);
-  margin: 0 auto;
-}
-
-@media (min-width: 1024px) {
-  .game-container {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-}
-
-/* Conteneur de canvas */
-.canvas-container {
-  position: relative;
-  background-color: var(--color-surface);
-  padding: 1rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  border: var(--neon-border);
-  margin: 0 auto;
-  overflow: hidden;
-}
-
-/* Effet d'écran CRT sur le canvas */
-.canvas-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    linear-gradient(transparent 50%, rgba(0, 0, 0, 0.2) 50%), 
-    linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.03), rgba(0, 0, 255, 0.03));
-  background-size: 100% 2px, 3px 100%;
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0.15;
-}
-
-/* Cadre d'arcade autour du jeu */
-.arcade-frame {
-  position: relative;
-  padding: 20px;
-  background-color: #111;
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  margin: 0 auto;
-}
-
-.arcade-frame::before, 
-.arcade-frame::after {
-  content: '';
-  position: absolute;
-  background-color: #222;
-  border-radius: 5px;
-}
-
-.arcade-frame::before {
-  top: 8px;
-  left: 8px;
-  right: 8px;
-  height: 15px;
-}
-
-.arcade-frame::after {
-  bottom: 8px;
-  left: 8px;
-  right: 8px;
-  height: 15px;
-}
-
-canvas {
-  display: block;
-  image-rendering: pixelated; /* Rendu pixelisé pour l'effet rétro */
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-}
-
-canvas.game-over {
-  opacity: 0.7;
-}
-
-/* Overlay de Game Over */
-.overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.8);
-  z-index: 10;
-  border-radius: 0.5rem;
-}
-
-.overlay-content {
-  background-color: var(--color-surface);
-  padding: 1.5rem;
-  border-radius: 0.5rem;
-  text-align: center;
-  width: 80%;
-  max-width: 350px;
-  border: var(--neon-border);
-  box-shadow: 0 0 15px rgba(74, 222, 128, 0.3);
-}
-
-.overlay-content h2 {
-  font-family: 'Press Start 2P', cursive;
-  font-size: 1.25rem;
-  margin-bottom: 1rem;
-  color: var(--color-primary);
-  text-shadow: 0 0 5px var(--color-primary);
-}
-
-/* Panneaux de jeu */
-.game-panel {
-  background-color: var(--color-surface);
-  border-radius: 0.5rem;
-  padding: 1.25rem;
-  min-width: 220px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  border: var(--neon-border);
-}
-
-.left-panel, .right-panel {
-  flex-shrink: 0;
-}
-
-/* Section de statistiques */
-.stats-section {
-  margin-bottom: 1.5rem;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
-}
-
-.stat-item {
-  background-color: var(--color-surface-alt);
-  border-radius: 0.5rem;
-  padding: 0.75rem;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-height: 70px;
-}
-
-.stat-label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
-  margin-bottom: 0.25rem;
-}
-
-.stat-value {
-  font-size: 1.25rem;
-  font-weight: bold;
-  color: var(--color-primary);
-}
-
-/* Section de contrôles */
-.controls-section {
-  margin-bottom: 1.5rem;
-}
-
-.section-title {
-  font-family: 'Press Start 2P', cursive;
-  font-size: 0.85rem;
-  color: var(--color-primary);
-  margin-bottom: 1rem;
-  text-transform: uppercase;
-}
-
-.controls-list {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.control-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0.75rem;
-  background-color: var(--color-surface-alt);
-  border-radius: 0.25rem;
-}
-
-.key {
-  font-family: 'VT323', monospace;
-  background-color: var(--color-bg);
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.85rem;
-  color: var(--color-primary);
-}
-
-/* Contrôles tactiles */
-.touch-controls {
-  position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  z-index: 20;
-  padding: 1rem;
-  background-color: rgba(26, 26, 26, 0.5);
-  backdrop-filter: blur(5px);
-  border-radius: 1rem;
-  width: 90%;
-  max-width: 320px;
-}
-
-.touch-row {
-  display: flex;
-  justify-content: center;
-  gap: 0.75rem;
-}
-
-.touch-action-row {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 1rem;
-}
-
-.touch-btn {
-  width: 55px;
-  height: 55px;
-  border-radius: 50%;
-  background-color: rgba(74, 222, 128, 0.2);
-  border: 2px solid rgba(74, 222, 128, 0.5);
-  color: var(--color-text);
-  font-size: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  touch-action: manipulation;
-  user-select: none;
-  position: relative;
-  overflow: hidden;
-}
-
-.touch-btn::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: radial-gradient(circle, rgba(74, 222, 128, 0.3) 0%, transparent 70%);
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.touch-btn:active::after {
-  opacity: 1;
-}
-
-.touch-action-btn {
-  width: 45px;
-  height: 45px;
-  border-radius: 50%;
-  background-color: rgba(168, 85, 247, 0.2);
-  border: 2px solid rgba(168, 85, 247, 0.5);
-  color: var(--color-text);
-  font-size: 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  touch-action: manipulation;
-  user-select: none;
-}
-
-.touch-action-btn:active {
-  background-color: rgba(168, 85, 247, 0.4);
-}
-
-/* Installation PWA */
-.install-banner {
-  position: fixed;
-  top: env(safe-area-inset-top, 0);
-  left: 0;
-  right: 0;
-  background-color: var(--color-surface);
-  border-bottom: var(--neon-border);
-  color: var(--color-text);
-  padding: 0.75rem 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  z-index: 1000;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.install-banner p {
-  margin: 0;
-  font-family: 'VT323', monospace;
-  font-size: 1rem;
-}
-
-.install-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.install-button {
-  background-color: var(--color-primary);
-  color: var(--color-bg);
-  font-family: 'Press Start 2P', cursive;
-  font-size: 0.6rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.25rem;
-  border: none;
-  cursor: pointer;
-}
-
-.close-button {
-  background: none;
-  border: none;
-  color: var(--color-text);
-  font-size: 1.25rem;
-  cursor: pointer;
-  padding: 0.25rem;
-  box-shadow: none;
-}
-
-.close-button:hover {
-  transform: none;
-  box-shadow: none;
-}
-
-/* Indicateur hors ligne */
-.offline-indicator {
-  background-color: var(--color-warning);
-  color: black;
-  text-align: center;
-  padding: 0.5rem;
-  font-family: 'Press Start 2P', cursive;
-  font-size: 0.7rem;
-  position: sticky;
-  top: 0;
-  z-index: 990;
-}
-
-/* Leaderboard */
-.leaderboard-section {
-  width: 100%;
-  margin-top: 2rem;
-}
-
-.leaderboard-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.leaderboard-table th {
-  text-align: left;
-  padding: 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.leaderboard-table td {
-  padding: 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.leaderboard-table tr:nth-child(even) {
-  background-color: rgba(0, 0, 0, 0.2);
-}
-
-.leaderboard-table tr:hover {
-  background-color: rgba(74, 222, 128, 0.1);
-}
-
-/* Style mobile spécifique */
-@media (max-width: 768px) {
-  html {
-    font-size: 14px;
-  }
-
-  .game-container {
-    padding: 0.5rem;
-  }
-
-  .canvas-container {
-    padding: 0.75rem;
-    width: 100%;
-  }
-
-  h1 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-  }
-
-  .stats-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .install-banner {
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.5rem;
-  }
-
-  .install-buttons {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .section-title-mobile {
-    font-size: 1rem;
-    text-align: center;
-    margin: 1rem 0;
-  }
-
-  .hidden {
-    display: none !important;
-  }
-}
-
-/* Support pour appareils d'Apple (notch, etc.) */
-@supports (padding: max(0px)) {
-  .page-container, .footer {
-    padding-left: max(var(--spacing-screen-safe), env(safe-area-inset-left));
-    padding-right: max(var(--spacing-screen-safe), env(safe-area-inset-right));
-  }
-
-  .footer {
-    padding-bottom: max(1rem, env(safe-area-inset-bottom));
-  }
-
-  .touch-controls {
-    bottom: max(20px, env(safe-area-inset-bottom) + 10px);
-  }
-}
-
-/* Animations */
-@keyframes scanline {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(100%);
-  }
-}
-
-@keyframes glow {
-  0%, 100% {
-    box-shadow: 0 0 5px var(--color-primary);
-  }
-  50% {
-    box-shadow: 0 0 15px var(--color-primary), 0 0 30px var(--color-primary);
-  }
-}
-
-.retry-button, .resume-button {
-  animation: glow 2s infinite;
-}
+/*--------------------------------------
+ * FEGACLUB - Global Styles
+ * Plateforme de Jeux Web3 - Retro Arcade Style
+ *-------------------------------------*/
+ @import 'tailwindcss/utilities';
+ @import 'tailwindcss/base';
+ @import 'tailwindcss/components';
+ /* Importation des polices Google Fonts */
+ @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Roboto+Mono:wght@400;600&display=swap');
+ 
+ /*--------------------------------------
+  * Variables & Thème
+  *-------------------------------------*/
+ :root {  
+   /* Couleurs principales selon la charte graphique */
+   --color-bg: #1a1a1a;               /* Charcoal Noir */
+   --color-primary: #4ade80;          /* Vert néon */
+   --color-primary-hover: #6ee7b7;    /* Vert néon plus clair pour hover */
+   --color-secondary-1: #a855f7;      /* Violet néon */
+   --color-secondary-2: #38bdf8;      /* Cyan néon */
+   --color-secondary-3: #ec4899;      /* Fuchsia pixel */
+   --color-text: #e5e5e5;             /* Gris clair */
+   --color-text-secondary: #94A3B8;   /* Gris plus sombre */
+   
+   /* Couleurs d'interface */
+   --color-surface: #21212b;          /* Surface plus légère que le fond */
+   --color-surface-alt: #2a2a36;      /* Surface alternative */
+   --color-surface-lighter: #313140;  /* Surface plus claire pour hover */
+   
+   /* Couleurs fonctionnelles */
+   --color-error: #ef4444;            /* Rouge pour erreurs */
+   --color-success: #22c55e;          /* Vert pour succès */
+   --color-warning: #eab308;          /* Jaune pour avertissements */
+   
+   /* Espacements et tailles */
+   --spacing-screen-safe: 20px;
+   --max-width-game: 1200px;
+   
+   /* Effets de néon */
+   --neon-primary-glow: 0 0 5px rgba(74, 222, 128, 0.5);
+   --neon-secondary-glow: 0 0 5px rgba(168, 85, 247, 0.5);
+   --neon-border: 1px solid rgba(74, 222, 128, 0.8);
+   
+   /* Variations pour les backgrounds */
+   --bg-gradient-1: linear-gradient(135deg, #1a1a1a 0%, #252533 100%);
+   --bg-gradient-2: radial-gradient(circle at top right, #252533 0%, #1a1a1a 100%);
+   --scanline-effect: linear-gradient(0deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+   --grid-effect: repeating-linear-gradient(0deg, rgba(74, 222, 128, 0.03) 0px, rgba(74, 222, 128, 0.03) 1px, transparent 1px, transparent 40px),
+                  repeating-linear-gradient(90deg, rgba(74, 222, 128, 0.03) 0px, rgba(74, 222, 128, 0.03) 1px, transparent 1px, transparent 40px);
+ }
+ 
+ /*--------------------------------------
+  * Global Reset & Utils
+  *-------------------------------------*/
+ *, *::before, *::after {
+   box-sizing: border-box;
+ }
+ 
+ html {
+   /* Éviter le rebond sur iOS */
+   height: 100%;
+   overflow: hidden;
+   /* Note: viewport-fit doit être défini dans la balise meta HTML, pas en CSS */
+ }
+ 
+ body {
+   height: 100%;
+   overflow: auto;
+   margin: 0;
+   padding: 0;
+   background-color: var(--color-bg);
+   background-image: var(--bg-gradient-1);
+   color: var(--color-text);
+   font-family: 'VT323', 'Roboto Mono', monospace;
+   font-size: 18px;
+   line-height: 1.5;
+   -webkit-font-smoothing: none; /* Pour un rendu plus pixelisé */
+   -webkit-tap-highlight-color: transparent;
+   overscroll-behavior: none; /* Éviter le pull-to-refresh - Safari iOS <16 ignore cette propriété */
+ }
+ 
+ body.alt-theme {
+   background-image: var(--bg-gradient-2);
+ }
+ 
+ /*--------------------------------------
+  * Typography
+  *-------------------------------------*/
+ h1, h2, h3, h4, h5, h6 {
+   font-family: 'Press Start 2P', cursive;
+   line-height: 1.3;
+   letter-spacing: 0.5px;
+   margin: 0 0 1rem 0;
+   text-transform: uppercase;
+ }
+ 
+ h1 {
+   font-size: 1.75rem;
+   text-shadow: 0 0 8px var(--color-primary);
+   margin-bottom: 2rem;
+ }
+ 
+ h2 {
+   font-size: 1.25rem;
+   color: var(--color-primary);
+ }
+ 
+ h3 {
+   font-size: 1rem;
+   color: var(--color-secondary-1);
+ }
+ 
+ /* Effets Néon pour texte */
+ .neon-text {
+   font-family: 'Press Start 2P', cursive;
+   font-size: 3.5rem;
+   font-weight: 700;
+   color: #fff;
+   text-shadow:
+     0 0 5px rgba(74, 222, 128, 0.8),
+     0 0 10px rgba(74, 222, 128, 0.8),
+     0 0 15px rgba(74, 222, 128, 0.8),
+     0 0 20px rgba(74, 222, 128, 0.5),
+     0 0 35px rgba(74, 222, 128, 0.5),
+     0 0 40px rgba(74, 222, 128, 0.5);
+   animation: neon-flicker 3s infinite alternate;
+ }
+ 
+ /* Variante violet */
+ .neon-text-purple {
+   text-shadow:
+     0 0 5px rgba(168, 85, 247, 0.8),
+     0 0 10px rgba(168, 85, 247, 0.8),
+     0 0 15px rgba(168, 85, 247, 0.8),
+     0 0 20px rgba(168, 85, 247, 0.5),
+     0 0 35px rgba(168, 85, 247, 0.5),
+     0 0 40px rgba(168, 85, 247, 0.5);
+ }
+ 
+ /* Variante cyan */
+ .neon-text-cyan {
+   text-shadow:
+     0 0 5px rgba(56, 189, 248, 0.8),
+     0 0 10px rgba(56, 189, 248, 0.8),
+     0 0 15px rgba(56, 189, 248, 0.8),
+     0 0 20px rgba(56, 189, 248, 0.5),
+     0 0 35px rgba(56, 189, 248, 0.5),
+     0 0 40px rgba(56, 189, 248, 0.5);
+ }
+ 
+ /* Variante multicolore */
+ .neon-text-multi {
+   text-shadow:
+     0 0 5px rgba(74, 222, 128, 0.8),
+     0 0 10px rgba(74, 222, 128, 0.8),
+     0 0 15px rgba(168, 85, 247, 0.8),
+     0 0 20px rgba(168, 85, 247, 0.5),
+     0 0 35px rgba(56, 189, 248, 0.5),
+     0 0 40px rgba(56, 189, 248, 0.5);
+ }
+ 
+ /*--------------------------------------
+  * Animations
+  *-------------------------------------*/
+ .blink {
+   animation: blink 1.5s step-end infinite;
+ }
+ 
+ @keyframes blink {
+   0%, 100% { opacity: 1; }
+   50% { opacity: 0.5; }
+ }
+ 
+ @keyframes scanline {
+   0% {
+     transform: translateY(-100%);
+   }
+   100% {
+     transform: translateY(100%);
+   }
+ }
+ 
+ @keyframes glow {
+   0%, 100% {
+     box-shadow: 0 0 5px var(--color-primary);
+   }
+   50% {
+     box-shadow: 0 0 15px var(--color-primary), 0 0 30px var(--color-primary);
+   }
+ }
+ 
+ @keyframes slideIn {
+   from {
+     transform: translateX(100%);
+     opacity: 0;
+   }
+   to {
+     transform: translateX(0);
+     opacity: 1;
+   }
+ }
+ 
+ .retry-button, .resume-button {
+   animation: glow 2s infinite;
+ }
+ 
+ /*--------------------------------------
+  * Layout Containers
+  *-------------------------------------*/
+ .app {
+   min-height: 100vh;
+   display: flex;
+   flex-direction: column;
+   /* Effet de scanlines pour l'ambiance écran CRT */
+   background-image: var(--scanline-effect);
+   background-size: 100% 2px;
+ }
+ 
+ .app.grid-bg {
+   background-image: var(--grid-effect), var(--scanline-effect);
+ }
+ 
+ .page-container {
+   flex: 1;
+   width: 100%;
+   max-width: var(--max-width-game);
+   margin: 0 auto;
+   padding: 1rem var(--spacing-screen-safe);
+   display: flex;
+   flex-direction: column;
+ }
+ 
+ .main {
+   flex: 1;
+   display: flex;
+   flex-direction: column;
+   padding-bottom: env(safe-area-inset-bottom, 0);
+ }
+ 
+ /*--------------------------------------
+  * Cards & Sections
+  *-------------------------------------*/
+ .card, 
+ .section,
+ .container {
+   background-color: var(--color-surface);
+   border-radius: 0.5rem;
+   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+   margin-bottom: 1.5rem;
+   border: var(--neon-border);
+   position: relative;
+   overflow: hidden;
+ }
+ 
+ /* Effet de bordure pixelisée */
+ .pixel-border {
+   position: relative;
+ }
+ 
+ .pixel-border::before {
+   content: '';
+   position: absolute;
+   top: -2px;
+   left: -2px;
+   right: -2px;
+   bottom: -2px;
+   border: 2px solid var(--color-primary);
+   z-index: -1;
+   clip-path: polygon(
+     0% 5px, 5px 5px, 5px 0%, calc(100% - 5px) 0%, calc(100% - 5px) 5px, 100% 5px,
+     100% calc(100% - 5px), calc(100% - 5px) calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 5px calc(100% - 5px), 0% calc(100% - 5px)
+   );
+ }
+ 
+ /* Version améliorée pour les sections principales */
+ .pixel-border-neon {
+   position: relative;
+ }
+ 
+ .pixel-border-neon::before {
+   content: '';
+   position: absolute;
+   top: -4px;
+   left: -4px;
+   right: -4px;
+   bottom: -4px;
+   background: transparent;
+   border: 4px solid var(--color-primary);
+   z-index: -1;
+   box-shadow: 0 0 10px rgba(74, 222, 128, 0.8);
+   clip-path: polygon(
+     0 8px, 8px 8px, 8px 0, calc(100% - 8px) 0, calc(100% - 8px) 8px, 100% 8px,
+     100% calc(100% - 8px), calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 8px calc(100% - 8px), 0 calc(100% - 8px)
+   );
+ }
+ 
+ /* Coin d'arcade pixelisé */
+ .pixel-corner {
+   position: absolute;
+   width: 15px;
+   height: 15px;
+ }
+ 
+ .pixel-corner.top-left {
+   top: 0;
+   left: 0;
+   border-top: 3px solid var(--color-primary);
+   border-left: 3px solid var(--color-primary);
+ }
+ 
+ .pixel-corner.top-right {
+   top: 0;
+   right: 0;
+   border-top: 3px solid var(--color-primary);
+   border-right: 3px solid var(--color-primary);
+ }
+ 
+ .pixel-corner.bottom-left {
+   bottom: 0;
+   left: 0;
+   border-bottom: 3px solid var(--color-primary);
+   border-left: 3px solid var(--color-primary);
+ }
+ 
+ .pixel-corner.bottom-right {
+   bottom: 0;
+   right: 0;
+   border-bottom: 3px solid var(--color-primary);
+   border-right: 3px solid var(--color-primary);
+ }
+ 
+ /* Version améliorée des coins d'arcade avec effet lumineux */
+ .arcade-corner {
+   position: absolute;
+   width: 15px;
+   height: 15px;
+   z-index: 2;
+ }
+ 
+ .arcade-corner.top-left {
+   top: 0;
+   left: 0;
+   border-top: 3px solid var(--color-primary);
+   border-left: 3px solid var(--color-primary);
+   box-shadow: -2px -2px 5px rgba(74, 222, 128, 0.5);
+ }
+ 
+ .arcade-corner.top-right {
+   top: 0;
+   right: 0;
+   border-top: 3px solid var(--color-primary);
+   border-right: 3px solid var(--color-primary);
+   box-shadow: 2px -2px 5px rgba(74, 222, 128, 0.5);
+ }
+ 
+ .arcade-corner.bottom-left {
+   bottom: 0;
+   left: 0;
+   border-bottom: 3px solid var(--color-primary);
+   border-left: 3px solid var(--color-primary);
+   box-shadow: -2px 2px 5px rgba(74, 222, 128, 0.5);
+ }
+ 
+ .arcade-corner.bottom-right {
+   bottom: 0;
+   right: 0;
+   border-bottom: 3px solid var(--color-primary);
+   border-right: 3px solid var(--color-primary);
+   box-shadow: 2px 2px 5px rgba(74, 222, 128, 0.5);
+ }
+ 
+ /*--------------------------------------
+  * Forms
+  *-------------------------------------*/
+ input, 
+ select, 
+ textarea {
+   background-color: var(--color-surface-alt);
+   color: var(--color-text);
+   border: 1px solid var(--color-surface-lighter);
+   padding: 0.75rem 1rem;
+   border-radius: 0.25rem;
+   font-family: 'VT323', 'Roboto Mono', monospace;
+   font-size: 1rem;
+ }
+ 
+ input:focus, 
+ select:focus, 
+ textarea:focus {
+   outline: none;
+   border-color: var(--color-primary);
+   box-shadow: var(--neon-primary-glow);
+ }
+ 
+ /*--------------------------------------
+  * Buttons
+  *-------------------------------------*/
+ button {
+   font-family: 'Press Start 2P', cursive;
+   font-size: 0.75rem;
+   background-color: var(--color-primary);
+   color: var(--color-bg);
+   border: none;
+   padding: 0.75rem 1.5rem;
+   border-radius: 0.25rem;
+   cursor: pointer;
+   transition: all 0.2s ease;
+   box-shadow: var(--neon-primary-glow);
+   text-transform: uppercase;
+   position: relative;
+   overflow: hidden;
+ }
+ 
+ button:before {
+   content: '';
+   position: absolute;
+   top: 0;
+   left: -100%;
+   width: 100%;
+   height: 100%;
+   background: linear-gradient(
+     to right,
+     transparent,
+     rgba(255, 255, 255, 0.2),
+     transparent
+   );
+   transition: left 0.5s;
+ }
+ 
+ button:hover:before {
+   left: 100%;
+ }
+ 
+ button:hover {
+   background-color: var(--color-primary-hover);
+   transform: translateY(-2px);
+   box-shadow: 0 0 10px var(--color-primary);
+ }
+ 
+ button:active {
+   transform: translateY(1px);
+ }
+ 
+ button:disabled {
+   opacity: 0.5;
+   cursor: not-allowed;
+ }
+ 
+ /* Variantes de boutons */
+ button.secondary {
+   background-color: var(--color-secondary-1);
+   box-shadow: 0 0 5px rgba(168, 85, 247, 0.5);
+ }
+ 
+ button.secondary:hover {
+   background-color: rgba(168, 85, 247, 0.8);
+   box-shadow: 0 0 10px var(--color-secondary-1);
+ }
+ 
+ button.cyan {
+   background-color: var(--color-secondary-2);
+   box-shadow: 0 0 5px rgba(56, 189, 248, 0.5);
+ }
+ 
+ button.cyan:hover {
+   background-color: rgba(56, 189, 248, 0.8);
+   box-shadow: 0 0 10px var(--color-secondary-2);
+ }
+ 
+ /*--------------------------------------
+  * Navigation & Footer
+  *-------------------------------------*/
+ .footer {
+   padding: 1rem;
+   text-align: center;
+   color: var(--color-text-secondary);
+   background-color: var(--color-surface);
+   border-top: 1px solid rgba(255, 255, 255, 0.05);
+   font-family: 'VT323', monospace;
+   font-size: 0.9rem;
+   padding-bottom: env(safe-area-inset-bottom, 1rem);
+ }
+ 
+ /*--------------------------------------
+  * Tables
+  *-------------------------------------*/
+ table {
+   width: 100%;
+   border-collapse: collapse;
+   background-color: var(--color-surface);
+   border-radius: 0.5rem;
+   overflow: hidden;
+   margin: 1rem 0;
+ }
+ 
+ th {
+   background-color: var(--color-surface-alt);
+   color: var(--color-primary);
+   font-family: 'Press Start 2P', cursive;
+   font-size: 0.7rem;
+   padding: 0.75rem;
+   text-align: left;
+   text-transform: uppercase;
+ }
+ 
+ td {
+   padding: 0.75rem;
+   border-top: 1px solid rgba(255, 255, 255, 0.05);
+ }
+ 
+ tr:hover {
+   background-color: var(--color-surface-lighter);
+ }
+ 
+ /*--------------------------------------
+  * Messages d'état
+  *-------------------------------------*/
+ .error {
+   background-color: rgba(239, 68, 68, 0.1);
+   color: var(--color-error);
+   border-left: 3px solid var(--color-error);
+   padding: 0.75rem 1rem;
+   border-radius: 0.25rem;
+   margin: 1rem 0;
+ }
+ 
+ .success {
+   background-color: rgba(34, 197, 94, 0.1);
+   color: var(--color-success);
+   border-left: 3px solid var(--color-success);
+   padding: 0.75rem 1rem;
+   border-radius: 0.25rem;
+   margin: 1rem 0;
+ }
+ 
+ .warning {
+   background-color: rgba(234, 179, 8, 0.1);
+   color: var(--color-warning);
+   border-left: 3px solid var(--color-warning);
+   padding: 0.75rem 1rem;
+   border-radius: 0.25rem;
+   margin: 1rem 0;
+ }
+ 
+ /*--------------------------------------
+  * Notification System
+  *-------------------------------------*/
+ .toasts {
+   position: fixed;
+   bottom: env(safe-area-inset-bottom, 1rem);
+   right: env(safe-area-inset-right, 1rem);
+   display: flex;
+   flex-direction: column;
+   gap: 0.5rem;
+   z-index: 100;
+ }
+ 
+ .toast {
+   padding: 0.75rem 1rem;
+   background-color: var(--color-primary);
+   color: var(--color-bg);
+   border-radius: 0.25rem;
+   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+   max-width: 90vw;
+   animation: slideIn 0.3s ease-out;
+   font-family: 'VT323', monospace;
+   font-size: 1rem;
+ }
+ 
+ .toast.error {
+   background-color: var(--color-error);
+   border-left: none;
+ }
+ 
+ .toast.warning {
+   background-color: var(--color-warning);
+   border-left: none;
+ }
+ 
+ .toast.success {
+   background-color: var(--color-success);
+   border-left: none;
+ }
+ 
+ /*--------------------------------------
+  * Hero Section
+  *-------------------------------------*/
+ .hero-section {
+   text-align: center;
+   padding: 3rem 2rem;
+   margin-bottom: 3rem;
+   position: relative;
+   overflow: hidden;
+   border-radius: 0.5rem;
+ }
+ 
+ .hero-section h1 {
+   font-size: 2rem;
+   margin-bottom: 1rem;
+   text-shadow: 0 0 10px var(--color-primary);
+ }
+ 
+ .hero-section p {
+   font-size: 1.1rem;
+   color: var(--color-text-secondary);
+   max-width: 600px;
+   margin: 0 auto;
+ }
+ 
+ /* Effet de scanline pour renforcer l'aspect CRT */
+ .hero-section::after {
+   content: '';
+   position: absolute;
+   top: 0;
+   left: 0;
+   width: 100%;
+   height: 100%;
+   background: linear-gradient(to bottom,
+     transparent 50%,
+     rgba(0, 0, 0, 0.05) 50%
+   );
+   background-size: 100% 4px;
+   z-index: 1;
+   pointer-events: none;
+ }
+ 
+ /* Hero avec effet de fond plus élaboré */
+ .hero-advanced {
+   position: relative;
+   overflow: hidden;
+   padding: 3rem 0;
+   background: linear-gradient(180deg, rgba(26,26,26,0.7) 0%, var(--color-bg) 100%);
+ }
+ 
+ .hero-advanced::before {
+   content: '';
+   position: absolute;
+   top: 0;
+   left: 0;
+   right: 0;
+   height: 100%;
+   background-image: 
+     radial-gradient(circle at 20% 30%, rgba(74, 222, 128, 0.15) 0%, transparent 50%),
+     radial-gradient(circle at 80% 70%, rgba(168, 85, 247, 0.15) 0%, transparent 50%);
+   z-index: -1;
+ }
+ 
+ /* Fond style arcade - alternative au bg-glass */
+ .arcade-bg {
+   background-color: var(--color-surface);
+   background-image: 
+     radial-gradient(circle at 20% 30%, rgba(74, 222, 128, 0.07) 0%, transparent 50%),
+     radial-gradient(circle at 80% 70%, rgba(168, 85, 247, 0.07) 0%, transparent 50%),
+     linear-gradient(0deg, rgba(0, 0, 0, 0.2) 1px, transparent 1px);
+   background-size: 100%, 100%, 100% 2px;
+   border: 1px solid rgba(74, 222, 128, 0.3);
+   box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 0, 0, 0.5);
+ }
+ 
+ /* Sous-titre avec effet de lueur subtil */
+ .hero-subtitle {
+   font-size: 1.5rem;
+   color: var(--color-text);
+   margin-bottom: 1.5rem;
+   text-shadow: 0 0 5px rgba(74, 222, 128, 0.3);
+   position: relative;
+   z-index: 2;
+ }
+ 
+ /*--------------------------------------
+  * Games Grid
+  *-------------------------------------*/
+ .games-grid {
+   display: grid;
+   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+   gap: 1.5rem;
+   margin: 1.5rem 0;
+ }
+ 
+ .game-card {
+   background-color: var(--color-surface);
+   border-radius: 0.5rem;
+   overflow: hidden;
+   transition: transform 0.2s ease;
+   height: 100%;
+   display: flex;
+   flex-direction: column;
+   position: relative;
+   border: var(--neon-border);
+ }
+ 
+ .game-card:hover {
+   transform: translateY(-5px);
+   box-shadow: var(--neon-primary-glow);
+ }
+ 
+ .game-card img {
+   width: 100%;
+   height: 150px;
+   object-fit: cover;
+ }
+ 
+ .game-card-content {
+   padding: 1.25rem;
+   flex: 1;
+   display: flex;
+   flex-direction: column;
+ }
+ 
+ .game-card h2 {
+   font-family: 'Press Start 2P', cursive;
+   font-size: 1rem;
+   margin-bottom: 0.75rem;
+ }
+ 
+ .game-card p {
+   font-size: 0.9rem;
+   color: var(--color-text-secondary);
+   margin-bottom: 1rem;
+   flex: 1;
+ }
+ 
+ .game-info {
+   display: flex;
+   gap: 1rem;
+   margin-bottom: 1rem;
+ }
+ 
+ .game-info span {
+   display: flex;
+   align-items: center;
+   font-size: 0.75rem;
+   color: var(--color-text-secondary);
+ }
+ 
+ .game-info svg {
+   width: 1rem;
+   height: 1rem;
+   margin-right: 0.25rem;
+   fill: var(--color-primary);
+ }
+ 
+ .game-actions {
+   display: flex;
+   gap: 0.75rem;
+   justify-content: flex-end;
+   margin-top: auto;
+ }
+ 
+ /* Variation avec un effet de néon autour des cartes */
+ .neon-cards .game-card {
+   box-shadow: 0 0 8px rgba(74, 222, 128, 0.3);
+   transition: all 0.3s ease;
+ }
+ 
+ .neon-cards .game-card:hover {
+   box-shadow: 0 0 12px rgba(74, 222, 128, 0.6), 0 0 20px rgba(74, 222, 128, 0.3);
+ }
+ 
+ .neon-cards .game-card:nth-child(3n+1) {
+   box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+ }
+ 
+ .neon-cards .game-card:nth-child(3n+1):hover {
+   box-shadow: 0 0 12px rgba(168, 85, 247, 0.6), 0 0 20px rgba(168, 85, 247, 0.3);
+ }
+ 
+ .neon-cards .game-card:nth-child(3n+2) {
+   box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+ }
+ 
+ .neon-cards .game-card:nth-child(3n+2):hover {
+   box-shadow: 0 0 12px rgba(56, 189, 248, 0.6), 0 0 20px rgba(56, 189, 248, 0.3);
+ }
+ 
+ /*--------------------------------------
+  * Game Container & Canvas
+  *-------------------------------------*/
+ .game-container {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   gap: 1.5rem;
+   width: 100%;
+   max-width: var(--max-width-game);
+   margin: 0 auto;
+ }
+ 
+ @media (min-width: 1024px) {
+   .game-container {
+     flex-direction: row;
+     align-items: flex-start;
+   }
+ }
+ 
+ /* Conteneur de canvas */
+ .canvas-container {
+   position: relative;
+   background-color: var(--color-surface);
+   padding: 1rem;
+   border-radius: 0.5rem;
+   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+   border: var(--neon-border);
+   margin: 0 auto;
+   overflow: hidden;
+ }
+ 
+ /* Effet d'écran CRT sur le canvas */
+ .canvas-container::before {
+   content: '';
+   position: absolute;
+   top: 0;
+   left: 0;
+   right: 0;
+   bottom: 0;
+   background: 
+     linear-gradient(transparent 50%, rgba(0, 0, 0, 0.2) 50%), 
+     linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.03), rgba(0, 0, 255, 0.03));
+   background-size: 100% 2px, 3px 100%;
+   pointer-events: none;
+   z-index: 2;
+   opacity: 0.15;
+ }
+ 
+ /* Effet d'écran CRT amélioré */
+ .crt-effect::after {
+   content: '';
+   position: absolute;
+   top: 0;
+   left: 0;
+   right: 0;
+   bottom: 0;
+   background: 
+     radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.2) 80%, rgba(0, 0, 0, 0.4) 100%);
+   pointer-events: none;
+   z-index: 3;
+   opacity: 0.4;
+   animation: scanline 8s linear infinite;
+ }
+ 
+ /* Cadre d'arcade autour du jeu */
+ .arcade-frame {
+   position: relative;
+   padding: 20px;
+   background-color: #111;
+   border-radius: 10px;
+   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+   margin: 0 auto;
+ }
+ 
+ .arcade-frame::before, 
+ .arcade-frame::after {
+   content: '';
+   position: absolute;
+   background-color: #222;
+   border-radius: 5px;
+ }
+ 
+ .arcade-frame::before {
+   top: 8px;
+   left: 8px;
+   right: 8px;
+   height: 15px;
+ }
+ 
+ .arcade-frame::after {
+   bottom: 8px;
+   left: 8px;
+   right: 8px;
+   height: 15px;
+ }
+ 
+ canvas {
+   display: block;
+   image-rendering: pixelated; /* Rendu pixelisé pour l'effet rétro */
+   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+ }
+ 
+ canvas.game-over {
+   opacity: 0.7;
+ }
+ 
+ /* Overlay de Game Over */
+ .overlay {
+   position: absolute;
+   inset: 0;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   background-color: rgba(0, 0, 0, 0.8);
+   z-index: 10;
+   border-radius: 0.5rem;
+ }
+ 
+ .overlay-content {
+   background-color: var(--color-surface);
+   padding: 1.5rem;
+   border-radius: 0.5rem;
+   text-align: center;
+   width: 80%;
+   max-width: 350px;
+   border: var(--neon-border);
+   box-shadow: 0 0 15px rgba(74, 222, 128, 0.3);
+ }
+ 
+ .overlay-content h2 {
+   font-family: 'Press Start 2P', cursive;
+   font-size: 1.25rem;
+   margin-bottom: 1rem;
+   color: var(--color-primary);
+   text-shadow: 0 0 5px var(--color-primary);
+ }
+ 
+ /*--------------------------------------
+  * Game Panels & Controls
+  *-------------------------------------*/
+ .game-panel {
+   background-color: var(--color-surface);
+   border-radius: 0.5rem;
+   padding: 1.25rem;
+   min-width: 220px;
+   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+   border: var(--neon-border);
+ }
+ 
+ .left-panel, .right-panel {
+   flex-shrink: 0;
+ }
+ 
+ /* Section de statistiques */
+ .stats-section {
+   margin-bottom: 1.5rem;
+ }
+ 
+ .stats-grid {
+   display: grid;
+   grid-template-columns: repeat(3, 1fr);
+   gap: 0.75rem;
+ }
+ 
+ .stat-item {
+   background-color: var(--color-surface-alt);
+   border-radius: 0.5rem;
+   padding: 0.75rem;
+   text-align: center;
+   display: flex;
+   flex-direction: column;
+   justify-content: center;
+   min-height: 70px;
+ }
+ 
+ .stat-label {
+   font-size: 0.7rem;
+   text-transform: uppercase;
+   color: var(--color-text-secondary);
+   margin-bottom: 0.25rem;
+ }
+ 
+ .stat-value {
+   font-size: 1.25rem;
+   font-weight: bold;
+   color: var(--color-primary);
+ }
+ 
+ /* Variation de stats avec animation */
+ .stat-animated .stat-value {
+   position: relative;
+   display: inline-block;
+ }
+ 
+ .stat-animated .stat-value::after {
+   content: '';
+   position: absolute;
+   bottom: -4px;
+   left: 0;
+   width: 100%;
+   height: 2px;
+   background: linear-gradient(90deg, 
+     transparent 0%, 
+     var(--color-primary) 50%, 
+     transparent 100%);
+   animation: glow 3s infinite;
+ }
+ 
+ /* Section de contrôles */
+ .controls-section {
+   margin-bottom: 1.5rem;
+ }
+ 
+ .section-title {
+   font-family: 'Press Start 2P', cursive;
+   font-size: 0.85rem;
+   color: var(--color-primary);
+   margin-bottom: 1rem;
+   text-transform: uppercase;
+ }
+ 
+ .controls-list {
+   display: grid;
+   gap: 0.5rem;
+ }
+ 
+ .control-item {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   padding: 0.5rem 0.75rem;
+   background-color: var(--color-surface-alt);
+   border-radius: 0.25rem;
+ }
+ 
+ .key {
+   font-family: 'VT323', monospace;
+   background-color: var(--color-bg);
+   padding: 0.25rem 0.5rem;
+   border-radius: 0.25rem;
+   font-size: 0.85rem;
+   color: var(--color-primary);
+ }
+ 
+ /*--------------------------------------
+  * Touch Controls
+  *-------------------------------------*/
+ .touch-controls {
+   position: fixed;
+   bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+   left: 50%;
+   transform: translateX(-50%);
+   display: flex;
+   flex-direction: column;
+   gap: 1rem;
+   z-index: 20;
+   padding: 1rem;
+   background-color: rgba(26, 26, 26, 0.5);
+   -webkit-backdrop-filter: blur(5px);
+   backdrop-filter: blur(5px);
+   border-radius: 1rem;
+   width: 90%;
+   max-width: 320px;
+ }
+ 
+ .touch-row {
+   display: flex;
+   justify-content: center;
+   gap: 0.75rem;
+ }
+ 
+ .touch-action-row {
+   display: flex;
+   justify-content: space-between;
+   margin-top: 1rem;
+ }
+ 
+ .touch-btn {
+   width: 55px;
+   height: 55px;
+   border-radius: 50%;
+   background-color: rgba(74, 222, 128, 0.2);
+   border: 2px solid rgba(74, 222, 128, 0.5);
+   color: var(--color-text);
+   font-size: 1.5rem;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   touch-action: manipulation;
+   -webkit-user-select: none;
+   user-select: none;
+   position: relative;
+   overflow: hidden;
+ }
+ 
+ .touch-btn::after {
+   content: '';
+   position: absolute;
+   top: 0;
+   left: 0;
+   right: 0;
+   bottom: 0;
+   background: radial-gradient(circle, rgba(74, 222, 128, 0.3) 0%, transparent 70%);
+   opacity: 0;
+   transition: opacity 0.2s;
+ }
+ 
+ .touch-btn:active::after {
+   opacity: 1;
+ }
+ 
+ .touch-action-btn {
+   width: 45px;
+   height: 45px;
+   border-radius: 50%;
+   background-color: rgba(168, 85, 247, 0.2);
+   border: 2px solid rgba(168, 85, 247, 0.5);
+   color: var(--color-text);
+   font-size: 1.25rem;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   touch-action: manipulation;
+   -webkit-user-select: none;
+   user-select: none;
+ }
+ 
+ .touch-action-btn:active {
+   background-color: rgba(168, 85, 247, 0.4);
+ }
+ 
+ /* Variation néon pour les contrôles tactiles */
+ .neon-controls .touch-btn {
+   box-shadow: 0 0 5px rgba(74, 222, 128, 0.3);
+ }
+ 
+ .neon-controls .touch-btn:active {
+   box-shadow: 0 0 15px rgba(74, 222, 128, 0.6);
+ }
+ 
+ .neon-controls .touch-action-btn {
+   box-shadow: 0 0 5px rgba(168, 85, 247, 0.3);
+ }
+ 
+ .neon-controls .touch-action-btn:active {
+   box-shadow: 0 0 15px rgba(168, 85, 247, 0.6);
+ }
+ 
+ /*--------------------------------------
+  * PWA Installation
+  *-------------------------------------*/
+ .install-banner {
+   position: fixed;
+   top: env(safe-area-inset-top, 0);
+   left: 0;
+   right: 0;
+   background-color: var(--color-surface);
+   border-bottom: var(--neon-border);
+   color: var(--color-text);
+   padding: 0.75rem 1rem;
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   z-index: 1000;
+   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+ }
+ 
+ .install-banner p {
+   margin: 0;
+   font-family: 'VT323', monospace;
+   font-size: 1rem;
+ }
+ 
+ .install-buttons {
+   display: flex;
+   gap: 0.5rem;
+ }
+ 
+ .install-button {
+   background-color: var(--color-primary);
+   color: var(--color-bg);
+   font-family: 'Press Start 2P', cursive;
+   font-size: 0.6rem;
+   padding: 0.5rem 0.75rem;
+   border-radius: 0.25rem;
+   border: none;
+   cursor: pointer;
+ }
+ 
+ .close-button {
+   background: none;
+   border: none;
+   color: var(--color-text);
+   font-size: 1.25rem;
+   cursor: pointer;
+   padding: 0.25rem;
+   box-shadow: none;
+ }
+ 
+ .close-button:hover {
+   transform: none;
+   box-shadow: none;
+ }
+ 
+ /*--------------------------------------
+  * Status Indicators
+  *-------------------------------------*/
+ .offline-indicator {
+   background-color: var(--color-warning);
+   color: black;
+   text-align: center;
+   padding: 0.5rem;
+   font-family: 'Press Start 2P', cursive;
+   font-size: 0.7rem;
+   position: sticky;
+   top: 0;
+   z-index: 990;
+ }
+ 
+ /*--------------------------------------
+  * Leaderboard
+  *-------------------------------------*/
+ .leaderboard-section {
+   width: 100%;
+   margin-top: 2rem;
+ }
+ 
+ .leaderboard-table {
+   width: 100%;
+   border-collapse: collapse;
+ }
+ 
+ .leaderboard-table th {
+   text-align: left;
+   padding: 0.75rem;
+   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+ }
+ 
+ .leaderboard-table td {
+   padding: 0.75rem;
+   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+ }
+ 
+ .leaderboard-table tr:nth-child(even) {
+   background-color: rgba(0, 0, 0, 0.2);
+ }
+ 
+ .leaderboard-table tr:hover {
+   background-color: rgba(74, 222, 128, 0.1);
+ }
+ 
+ /* Effet de surlignage sur la ligne sélectionnée */
+ .leaderboard-table tr.highlighted {
+   background-color: rgba(74, 222, 128, 0.15);
+   position: relative;
+ }
+ 
+ .leaderboard-table tr.highlighted::before {
+   content: '';
+   position: absolute;
+   left: 0;
+   top: 0;
+   bottom: 0;
+   width: 3px;
+   background-color: var(--color-primary);
+ }
+ 
+ /*--------------------------------------
+  * Web3 Specific Elements
+  *-------------------------------------*/
+ .wallet-connect {
+   background-color: var(--color-surface-alt);
+   border: var(--neon-border);
+   border-radius: 0.5rem;
+   padding: 1rem;
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   margin-bottom: 1.5rem;
+ }
+ 
+ .wallet-address {
+   font-family: 'Roboto Mono', monospace;
+   font-size: 0.85rem;
+   color: var(--color-primary);
+   background-color: rgba(0, 0, 0, 0.2);
+   padding: 0.5rem 0.75rem;
+   border-radius: 0.25rem;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+   max-width: 150px;
+ }
+ 
+ .token-balance {
+   display: flex;
+   align-items: center;
+   gap: 0.5rem;
+   background-color: rgba(0, 0, 0, 0.2);
+   padding: 0.5rem 0.75rem;
+   border-radius: 0.25rem;
+ }
+ 
+ .token-icon {
+   width: 20px;
+   height: 20px;
+ }
+ 
+ .token-amount {
+   font-family: 'Roboto Mono', monospace;
+   font-size: 0.85rem;
+   color: var(--color-primary);
+ }
+ 
+ /* NFT Gallery */
+ .nft-gallery {
+   display: grid;
+   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+   gap: 1rem;
+   margin: 1.5rem 0;
+ }
+ 
+ .nft-item {
+   background-color: var(--color-surface-alt);
+   border-radius: 0.5rem;
+   overflow: hidden;
+   transition: transform 0.2s ease;
+   border: var(--neon-border);
+ }
+ 
+ .nft-item:hover {
+   transform: translateY(-5px);
+   box-shadow: var(--neon-primary-glow);
+ }
+ 
+ .nft-image {
+   width: 100%;
+   aspect-ratio: 1;
+   object-fit: cover;
+ }
+ 
+ .nft-info {
+   padding: 0.75rem;
+ }
+ 
+ .nft-name {
+   font-family: 'Press Start 2P', cursive;
+   font-size: 0.7rem;
+   margin-bottom: 0.5rem;
+   color: var(--color-primary);
+ }
+ 
+ .nft-details {
+   display: flex;
+   justify-content: space-between;
+   font-size: 0.7rem;
+   color: var(--color-text-secondary);
+ }
+ 
+ /*--------------------------------------
+  * Responsive Adjustments
+  *-------------------------------------*/
+ @media (max-width: 768px) {
+   html {
+     font-size: 14px;
+   }
+ 
+   .game-container {
+     padding: 0.5rem;
+   }
+ 
+   .canvas-container {
+     padding: 0.75rem;
+     width: 100%;
+   }
+ 
+   h1 {
+     font-size: 1.5rem;
+     margin-bottom: 1rem;
+   }
+ 
+   .stats-grid {
+     grid-template-columns: repeat(3, 1fr);
+   }
+ 
+   .install-banner {
+     flex-direction: column;
+     gap: 0.5rem;
+     padding: 0.5rem;
+   }
+ 
+   .install-buttons {
+     width: 100%;
+     justify-content: space-between;
+   }
+ 
+   .section-title-mobile {
+     font-size: 1rem;
+     text-align: center;
+     margin: 1rem 0;
+   }
+ 
+   .wallet-connect {
+     flex-direction: column;
+     gap: 0.75rem;
+     align-items: flex-start;
+   }
+ 
+   .wallet-address {
+     max-width: 100%;
+   }
+ 
+   .nft-gallery {
+     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+   }
+ }
+ 
+ /*--------------------------------------
+  * Utility Classes
+  *-------------------------------------*/
+ .hidden {
+   display: none !important;
+ }
+ 
+ .animate-glow {
+   animation: glow 2s infinite;
+ }
+ 
+ .animate-slide-in {
+   animation: slideIn 0.3s ease-out;
+ }
+ 
+ .text-ellipsis {
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis;
+ }
+ 
+ /*--------------------------------------
+  * Apple Device Support
+  *-------------------------------------*/
+ @supports (padding: max(0px)) {
+   .page-container, .footer {
+     padding-left: max(var(--spacing-screen-safe), env(safe-area-inset-left));
+     padding-right: max(var(--spacing-screen-safe), env(safe-area-inset-right));
+   }
+ 
+   .footer {
+     padding-bottom: max(1rem, env(safe-area-inset-bottom));
+   }
+ 
+   .touch-controls {
+     bottom: max(20px, env(safe-area-inset-bottom) + 10px);
+   }
+ }

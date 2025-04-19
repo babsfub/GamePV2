@@ -3,7 +3,19 @@
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!-- Mise à jour du viewport pour supporter les appareils avec encoche -->
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<!-- Couleur du thème pour la barre d'adresse mobile -->
+		<meta name="theme-color" content="#1a1a1a" />
+		<!-- Optimisations pour iOS -->
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		<!-- Icône pour l'écran d'accueil iOS -->
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
+		<!-- Manifeste PWA -->
+		<link rel="manifest" href="%sveltekit.assets%/manifest.json" />
+		<!-- Description du site -->
+		<meta name="description" content="FEGACLUB - Plateforme de jeux Web3 rétro arcade" />
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

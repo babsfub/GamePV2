@@ -24,6 +24,7 @@ export class ScoreService {
   }
 
   static async submitScore({
+    gameId,
     gameState,
     playerAddress,
     score,
@@ -36,6 +37,7 @@ export class ScoreService {
     transactionBlockNumber,
     transactionTimestamp
   }: {
+    gameId: GameId,
     gameState: any,
     playerAddress: Address,
     score: bigint,
@@ -50,6 +52,7 @@ export class ScoreService {
   }) {
     // Créer un objet avec les BigInt convertis en string
     const data: { [key: string]: any } = {
+      gameId,
       gameState: this.convertBigIntToString(gameState), // Conversion récursive
       playerAddress,
       score: score.toString(),

@@ -507,26 +507,36 @@
       const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
 
       // Exporter les données du jeu
-      const gameDataStr = engine.export_game_data_str(
-        walletState.address,
-        gameConfig.saltKey.toString(),
-        BigInt(block.number)
-      );
+const gameDataStr = engine.export_game_data_str(
+      walletState.address,
+      gameConfig.saltKey.toString(),
+      BigInt(block.number)
+  );
 
-      // Utiliser ScoreService
-      await ScoreService.submitScore({
-        gameState: gameDataStr,
-        playerAddress: walletState.address,
-        score: BigInt(snakeGameState?.score ?? 0),
-        blockNumber: BigInt(block.number),
-        stake: stakeInWei,
-        scoreHash: formattedHash,
-        transactionHash: tx,
-        contractHash: receipt.blockHash,
-        roundId: gameConfig.currentRound,
-        transactionBlockNumber: receipt.blockNumber,
-        transactionTimestamp: new Date()
-      });
+  // Parsez la chaîne JSON en objet avant de la passer au service
+  let gameDataObj;
+  try {
+      gameDataObj = JSON.parse(gameDataStr);
+  } catch (e) {
+      // En cas d'échec du parsing, utilisez la chaîne brute
+      gameDataObj = gameDataStr;
+  }
+
+  // Utiliser ScoreService avec l'objet parsé
+  await ScoreService.submitScore({
+      gameId: 'snake',
+      gameState: gameDataObj, // Utiliser l'objet parsé au lieu de la chaîne
+      playerAddress: walletState.address,
+      score: BigInt(snakeGameState?.score ?? 0),
+      blockNumber: BigInt(block.number),
+      stake: stakeInWei,
+      scoreHash: scoreHashHex,
+      transactionHash: tx,
+      contractHash: receipt.blockHash,
+      roundId: gameConfig.currentRound,
+      transactionBlockNumber: receipt.blockNumber,
+      transactionTimestamp: new Date()
+  });
 
       await updateGameData();
       uiState.success(`Score submitted! TX: ${tx}`);

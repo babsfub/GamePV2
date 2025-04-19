@@ -403,11 +403,10 @@
       // Attendre la confirmation
       const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
 
-      // Utiliser ScoreService au lieu du fetch direct
       await ScoreService.submitScore({
         gameState: tetrisGameState,
         playerAddress: walletState.address,
-        score: BigInt(tetrisGameState?.score ?? 0), // Important: utiliser tetrisGameState.score
+        score: BigInt(tetrisGameState?.score ?? 0), 
         blockNumber: BigInt(block.number),
         stake: stakeInWei,
         scoreHash: scoreHashHex,
@@ -434,8 +433,12 @@
   $effect(() => {
     if (browser) {
       updateGameData();
+
       const interval = setInterval(updateGameData, 60000);
       return () => clearInterval(interval);
+    }
+    if (browser && data?.pwa?.preloadGame) {
+      data.pwa.preloadGame('tetris');
     }
   });
   
