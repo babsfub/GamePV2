@@ -17,6 +17,9 @@
   } from '$lib/pwa/index.js';
   import type { PageData } from './$types.js';
   import '../app.css';
+  import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
+
+  injectSpeedInsights();
 
   let { data, children } = $props<{ 
     data: PageData,
