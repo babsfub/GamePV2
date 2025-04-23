@@ -3,6 +3,7 @@
   import { browser } from '$app/environment';
   import Header from '$lib/components/Header.svelte';
   import Footer from '$lib/components/Footer.svelte';
+  import Ad from '$lib/components/Ad.svelte
   import OfflineIndicator from '$lib/components/offlineIndicator.svelte';
   import { createUIState } from '$lib/state/ui.svelte.js';
   import { createGameState } from '$lib/state/game.svelte.js';
@@ -175,6 +176,7 @@
 
 
   <Footer />
+<Ad />
 </div>
 
 <style>
