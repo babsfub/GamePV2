@@ -144,39 +144,18 @@
     }
   
     .footer-ads {
-      margin: 1.5rem 0;
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-  
-    /* Fixed dimensions for ad container to prevent layout shifts */
-    .ad-container {
-      position: relative;
-      width: 728px; /* Standard banner ad width */
-      max-width: 100%;
-      height: 90px; /* Standard banner ad height */
-      background-color: var(--color-surface-alt, #2a2a36);
-      border-radius: 0.5rem;
-      overflow: hidden;
-      /* Add a small border to make the ad more visible */
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-  
-    /* Style for the "Advertise here" link to ensure visibility */
-    .advertise-link {
-      position: absolute;
-      right: 0;
-      bottom: 0;
-      font-size: 11px;
-      color: rgba(255, 255, 255, 0.7);
-      background-color: rgba(0, 0, 0, 0.5);
-      padding: 2px 5px;
-      text-decoration: none;
-      border-top-left-radius: 4px;
-      z-index: 2; /* Ensure link is above the iframe */
-    }
+        position: relative;   /* créer contexte maîtrisé */
+        z-index: 20;          /* au-dessus des autres éléments */
+        }
+        .ad-container iframe {
+        position: relative;
+        z-index: 10;
+        }
+        .advertise-link {
+        position: absolute;
+        z-index: 30;          /* lien toujours au-dessus */
+        }
+
   
     .advertise-link:hover {
       color: white;
