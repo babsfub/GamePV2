@@ -176,7 +176,7 @@
 
 
   <Footer />
-<Ad />
+<Ad enableAds={true} />
 </div>
 
 <style>
