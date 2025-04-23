@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import Header from '$lib/components/Header.svelte';
+  import Footer from '$lib/components/Footer.svelte';
   import OfflineIndicator from '$lib/components/offlineIndicator.svelte';
   import { createUIState } from '$lib/state/ui.svelte.js';
   import { createGameState } from '$lib/state/game.svelte.js';
@@ -171,9 +172,8 @@
     </div>
   {/if}
 
-  <footer class="footer">
-    <p>© 2024 Retro Gaming Platform</p>
-  </footer>
+
+  <Footer />
 </div>
 
 <style>
