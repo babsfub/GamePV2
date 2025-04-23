@@ -174,6 +174,7 @@
   {/if}
 
 
+  <Footer />
 </div>
 
 <style>
