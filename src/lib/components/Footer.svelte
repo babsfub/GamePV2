@@ -9,16 +9,19 @@
   <footer class="footer">
     <div class="footer-content">
       
+  
       {#if showAds}
         <div class="footer-ads">
-          <div id="frame" style="width:100%; height:100%; max-height: 90px;">
+          <!-- Ad container with fixed dimensions to prevent layout shifts -->
+          <div id="frame" class="ad-container">
             <iframe 
               data-aa='2391419' 
               src='//acceptable.a-ads.com/2391419' 
               style='border:0px; padding:0; width:100%; height:100%; overflow:hidden; background-color: transparent;'>
             </iframe>
+            <!-- Ensuring the "Advertise here" link is always visible and not overlapped -->
             <a 
-              style="display: block; text-align: right; font-size: 12px;" 
+              class="advertise-link"
               id="preview-link" 
               href="https://aads.com/campaigns/new/?source_id=2391419&source_type=ad_unit&partner=2391419">
               Advertise here
@@ -40,6 +43,8 @@
       border-top: 1px solid rgba(255, 255, 255, 0.05);
       color: var(--color-text-secondary, #94A3B8);
       padding-bottom: env(safe-area-inset-bottom, 1rem);
+      position: relative;
+      z-index: 10; /* Ensure footer is above other elements */
     }
   
     .footer-content {
@@ -117,24 +122,64 @@
     }
   
     .footer-ads {
-      margin: 1rem 0;
-      max-width: 728px;
+      margin: 1.5rem 0;
       width: 100%;
-      align-self: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  
+    /* Fixed dimensions for ad container to prevent layout shifts */
+    .ad-container {
+      position: relative;
+      width: 728px; /* Standard banner ad width */
+      max-width: 100%;
+      height: 90px; /* Standard banner ad height */
+      background-color: var(--color-surface-alt, #2a2a36);
       border-radius: 0.5rem;
       overflow: hidden;
-      background-color: var(--color-surface-alt, #2a2a36);
+      /* Add a small border to make the ad more visible */
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  
+    /* Style for the "Advertise here" link to ensure visibility */
+    .advertise-link {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.7);
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 2px 5px;
+      text-decoration: none;
+      border-top-left-radius: 4px;
+      z-index: 2; /* Ensure link is above the iframe */
+    }
+  
+    .advertise-link:hover {
+      color: white;
+      background-color: rgba(0, 0, 0, 0.7);
     }
   
     .footer-copyright {
       text-align: center;
       font-size: 0.9rem;
       opacity: 0.8;
+      padding-top: 0.5rem;
     }
   
-    @media (min-width: 768px) {
+    /* Media queries for responsive design */
+    @media (max-width: 768px) {
       .footer-content {
-        gap: 2rem;
+        gap: 1.5rem;
+      }
+  
+      .ad-container {
+        height: 60px; /* Smaller height on mobile */
+      }
+  
+      .footer-links {
+        gap: 1rem;
       }
     }
   </style>
