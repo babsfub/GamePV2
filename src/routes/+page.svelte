@@ -179,7 +179,7 @@
     />
   </div>
 </main>
-<Ad />
+<Ad enableAds={true} />
 <style>
   .home-container {
     max-width: var(--max-width-game);
