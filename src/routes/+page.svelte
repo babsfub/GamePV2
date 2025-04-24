@@ -7,6 +7,7 @@
   import GameCard from '$lib/components/games/GameCard.svelte';
   import StatsCard from '$lib/components/games/StatsCard.svelte';
   import GameSelector from '$lib/components/games/GameSelector.svelte';
+  import Ad from '$lib/components/ad.svelte';
   import { GAMES, SUPPORTED_GAME_IDS } from '$lib/config/games.js';
   // État global
   const gameState = getGameState();
@@ -178,7 +179,7 @@
     />
   </div>
 </main>
-
+<Ad />
 <style>
   .home-container {
     max-width: var(--max-width-game);
