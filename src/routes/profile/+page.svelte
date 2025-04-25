@@ -164,7 +164,7 @@
                         isActive: roundData.isActive
                     });
                     
-                    // Filtrer les scores du joueur
+            // Filtrer les scores du joueur
                     const normalizedUserAddress = walletState.address.toLowerCase();
                     const playerRoundScores = roundData.scores
                         .filter(score => {
@@ -173,11 +173,16 @@
                             console.log(`Score check - Player: ${scorePlayerAddress.substring(0, 8)}... vs User: ${normalizedUserAddress.substring(0, 8)}... - Match: ${isMatch}`);
                             return isMatch;
                         })
-                        .map(score => ({
-                            ...score,
-                            game,
-                            roundId: currentRoundId
-                        }));
+                        .map(score => {
+                            // Ajout du gameId explicitement comme propriété distincte
+                            const mappedScore = {
+                                ...score,
+                                roundId: currentRoundId,
+                                game: game as GameId  // Ajouter explicitement le gameId ici
+                            };
+                            console.log("Score mappé avec game:", mappedScore);
+                            return mappedScore;
+                        });
                     
                     console.log(`Found ${playerRoundScores.length} scores for player in game ${game}`);
                     allScores.push(...playerRoundScores);
