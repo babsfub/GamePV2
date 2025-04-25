@@ -3,7 +3,7 @@
     import { getUIState } from '$lib/state/ui.svelte.js';
     import { readContract, writeContract } from '$lib/contracts/actions.js';
     import { formatEther } from 'viem';
-    import type { GameId, ContractScore } from '$lib/types.js';
+    import type { GameId, ContractScore, Score } from '$lib/types.js';
 
     const { data } = $props<{
         data: {
@@ -20,25 +20,87 @@
         totalGames: 0,
         totalScore: 0n,
         totalStake: 0n,
-        verifiedScores: 0
+        verifiedScores: 0,
+        highestScore: 0n,
+        lastPlayedDate: null as Date | null
     });
-    let playerScores = $state<(ContractScore & { game: GameId; roundId: bigint })[]>([]);
+    
+    let playerScores = $state<(Score & { game: GameId; roundId: bigint })[]>([]);
     let pendingWithdrawals = $state<bigint>(0n);
     let isLoading = $state(false);
     let isWithdrawing = $state(false);
-
-    // États dérivés
-    let isConnected = $derived(Boolean(walletState.address));
+    let error = $state<string | null>(null);
+    
+    // Pagination
+    let currentPage = $state(1);
+    const pageSize = 5;
+    let totalPages = $derived(Math.ceil(playerScores.length / pageSize));
+    
+    // Filtres
+    let selectedGameFilter = $state<GameId | 'all'>('all');
+    let sortBy = $state<'date' | 'score' | 'stake'>('date');
+    let sortDirection = $state<'asc' | 'desc'>('desc');
     
     // Liste des jeux disponibles
     const gamesList: readonly GameId[] = ['snake', 'tetris'];
 
+    // États dérivés
+    let isConnected = $derived(Boolean(walletState.address));
+    let filteredScores = $derived(() => {
+        // Filtrer par jeu
+        let scores = playerScores.filter(score => 
+            selectedGameFilter === 'all' || score.game === selectedGameFilter
+        );
+        
+        // Trier les scores
+        scores = [...scores].sort((a, b) => {
+            if (sortBy === 'date') {
+                return sortDirection === 'desc' 
+                    ? Number(b.blockNumber - a.blockNumber)
+                    : Number(a.blockNumber - b.blockNumber);
+            } else if (sortBy === 'score') {
+                return sortDirection === 'desc' 
+                    ? Number(b.score - a.score)
+                    : Number(a.score - b.score);
+            } else { // stake
+                return sortDirection === 'desc' 
+                    ? Number(b.stake - a.stake)
+                    : Number(a.stake - b.stake);
+            }
+        });
+        
+        return scores;
+    });
+    
+    let paginatedScores = $derived(() => {
+        const startIndex = (currentPage - 1) * pageSize;
+        return filteredScores.slice(startIndex, startIndex + pageSize);
+    });
+
     // Fonction pour calculer les statistiques
     function updateStats() {
+        // Mise à jour des statistiques de base
         playerStats.totalGames = playerScores.length;
         playerStats.totalScore = playerScores.reduce((acc, score) => acc + score.score, 0n);
         playerStats.totalStake = playerScores.reduce((acc, score) => acc + score.stake, 0n);
         playerStats.verifiedScores = playerScores.filter(score => score.verified).length;
+        
+        // Statistiques avancées
+        playerStats.highestScore = playerScores.reduce(
+            (max, score) => score.score > max ? score.score : max, 
+            0n
+        );
+        
+        // Dernière partie jouée
+        if (playerScores.length > 0) {
+            const latestScore = [...playerScores].sort((a, b) => 
+                Number(b.blockNumber - a.blockNumber)
+            )[0];
+            playerStats.lastPlayedDate = new Date();
+        }
+        
+        // Réinitialiser la pagination à la première page
+        currentPage = 1;
     }
 
     async function loadPlayerData() {
@@ -46,21 +108,27 @@
         
         try {
             isLoading = true;
-            const allScores: (ContractScore & { game: GameId; roundId: bigint })[] = [];
+            error = null;
+            const allScores: (Score & { game: GameId; roundId: bigint })[] = [];
             
-            for (const game of gamesList) {
+            // Fonction optimisée pour obtenir les scores d'un jeu
+            async function getGameScores(game: GameId) {
                 try {
                     const gameConfig = await readContract.getGameConfig(game);
                     
                     if (!gameConfig.active) {
                         console.log(`Game ${game} is not active, skipping...`);
-                        continue;
+                        return [];
                     }
 
                     const currentRoundId = gameConfig.currentRound;
+                    const gameScores: (Score & { game: GameId; roundId: bigint })[] = [];
                     
-                    // Parcourir les rounds
-                    for (let roundId = currentRoundId; roundId > 0n; roundId--) {
+                    // Limiter à 5 rounds maximum pour éviter trop de requêtes
+                    const startRound = currentRoundId;
+                    const endRound = currentRoundId > 5n ? currentRoundId - 5n : 1n;
+                    
+                    for (let roundId = startRound; roundId >= endRound; roundId--) {
                         try {
                             const roundData = await readContract.getRoundData(roundId, game);
                             
@@ -77,23 +145,34 @@
                                 }));
                             
                             if (playerRoundScores.length > 0) {
-                                allScores.push(...playerRoundScores);
+                                gameScores.push(...playerRoundScores);
                             }
                         } catch (roundError) {
                             console.log(`Skipping round ${roundId} for ${game}`);
-                            continue;
                         }
                     }
+                    
+                    return gameScores;
                 } catch (gameError) {
                     console.log(`Error loading game ${game}`);
-                    continue;
+                    return [];
                 }
             }
+            
+            // Charger les scores de tous les jeux en parallèle
+            const gameScoresPromises = gamesList.map(game => getGameScores(game));
+            const allGameScores = await Promise.all(gameScoresPromises);
+            
+            // Combiner tous les scores
+            allGameScores.forEach(scores => {
+                allScores.push(...scores);
+            });
             
             // Mise à jour des scores et stats
             playerScores = allScores.sort((a, b) => Number(b.roundId - a.roundId));
             updateStats();
             
+            // Récupérer les retraits en attente
             if (walletState.address) {
                 pendingWithdrawals = await readContract.getPendingWithdrawals(walletState.address);
             }
@@ -122,6 +201,29 @@
         } finally {
             isWithdrawing = false;
         }
+    }
+    
+    function changePage(page: number) {
+        if (page >= 1 && page <= totalPages) {
+            currentPage = page;
+        }
+    }
+    
+    function setGameFilter(game: GameId | 'all') {
+        selectedGameFilter = game;
+        currentPage = 1; // Réinitialiser à la première page
+    }
+    
+    function toggleSort(field: 'date' | 'score' | 'stake') {
+        if (sortBy === field) {
+            // Inverser la direction si on clique sur le même champ
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            // Nouveau champ de tri, réinitialiser la direction
+            sortBy = field;
+            sortDirection = 'desc';
+        }
+        currentPage = 1; // Réinitialiser à la première page
     }
 
     // Effet pour charger les données
@@ -155,7 +257,7 @@
                 </div>
                 <div class="stat-card">
                     <span class="stat-label">Total Stake</span>
-                    <span class="stat-value">{formatEther(playerStats.totalStake)} POL</span>
+                    <span class="stat-value">{formatEther(playerStats.totalStake)} ETH</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-label">Verified Scores</span>
@@ -168,7 +270,7 @@
         <div class="withdrawals-section">
             <h2>Pending Withdrawals</h2>
             <div class="withdrawal-info">
-                <span class="amount">{formatEther(pendingWithdrawals)} POL</span>
+                <span class="amount">{formatEther(pendingWithdrawals)} ETH</span>
                 <button 
                     class="withdraw-button"
                     disabled={pendingWithdrawals === 0n || isWithdrawing}
@@ -181,14 +283,62 @@
 
         <!-- Scores Section -->
         <div class="scores-section">
-            <h2>Your Scores</h2>
+            <div class="scores-header">
+                <h2>Your Scores</h2>
+                
+                <!-- Filtres -->
+                <div class="filters">
+                    <div class="game-filter">
+                        <label for="game-filter">Game:</label>
+                        <select 
+                            id="game-filter" 
+                            bind:value={selectedGameFilter}
+                        >
+                            <option value="all">All Games</option>
+                            {#each gamesList as game}
+                                <option value={game}>{game.charAt(0).toUpperCase() + game.slice(1)}</option>
+                            {/each}
+                        </select>
+                    </div>
+                    
+                    <div class="sort-controls">
+                        <button 
+                            class="sort-button" 
+                            class:active={sortBy === 'date'}
+                            class:asc={sortBy === 'date' && sortDirection === 'asc'}
+                            onclick={() => toggleSort('date')}
+                        >
+                            Date {sortBy === 'date' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                        </button>
+                        
+                        <button 
+                            class="sort-button" 
+                            class:active={sortBy === 'score'}
+                            class:asc={sortBy === 'score' && sortDirection === 'asc'}
+                            onclick={() => toggleSort('score')}
+                        >
+                            Score {sortBy === 'score' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                        </button>
+                        
+                        <button 
+                            class="sort-button" 
+                            class:active={sortBy === 'stake'}
+                            class:asc={sortBy === 'stake' && sortDirection === 'asc'}
+                            onclick={() => toggleSort('stake')}
+                        >
+                            Stake {sortBy === 'stake' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
             {#if isLoading}
                 <div class="loading">Loading scores...</div>
             {:else if playerScores.length === 0}
                 <div class="empty-state">No scores found</div>
             {:else}
                 <div class="scores-grid">
-                    {#each playerScores as score}
+                    {#each paginatedScores as score}
                         <div class="score-card">
                             <div class="game-info">
                                 <span class="game-name">{score.game}</span>
@@ -196,7 +346,7 @@
                             </div>
                             <div class="score-details">
                                 <div class="score-value">{score.score.toString()} pts</div>
-                                <div class="stake">Stake: {formatEther(score.stake)} POL</div>
+                                <div class="stake">Stake: {formatEther(score.stake)} ETH</div>
                             </div>
                             <div class="status">
                                 {#if score.verified}
@@ -208,6 +358,37 @@
                         </div>
                     {/each}
                 </div>
+                
+                <!-- Pagination -->
+                {#if totalPages > 1}
+                    <div class="pagination">
+                        <button 
+                            class="page-btn" 
+                            disabled={currentPage === 1}
+                            onclick={() => changePage(currentPage - 1)}
+                        >
+                            Previous
+                        </button>
+                        
+                        {#each Array(totalPages) as _, i}
+                            <button 
+                                class="page-num" 
+                                class:active={currentPage === i+1}
+                                onclick={() => changePage(i+1)}
+                            >
+                                {i+1}
+                            </button>
+                        {/each}
+                        
+                        <button 
+                            class="page-btn" 
+                            disabled={currentPage === totalPages}
+                            onclick={() => changePage(currentPage + 1)}
+                        >
+                            Next
+                        </button>
+                    </div>
+                {/if}
             {/if}
         </div>
     {/if}
@@ -293,6 +474,61 @@
         cursor: not-allowed;
     }
 
+    .scores-section {
+        margin-top: 2rem;
+    }
+    
+    .scores-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .filters {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .game-filter {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .game-filter select {
+        background: rgba(0, 0, 0, 0.2);
+        color: white;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .sort-controls {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .sort-button {
+        background: rgba(0, 0, 0, 0.2);
+        color: #9ca3af;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .sort-button.active {
+        color: white;
+        background: rgba(79, 70, 229, 0.2);
+        border-color: rgba(79, 70, 229, 0.5);
+    }
+
     .scores-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -304,6 +540,12 @@
         background: rgba(0, 0, 0, 0.1);
         padding: 1rem;
         border-radius: 0.5rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .score-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .game-info {
@@ -350,6 +592,32 @@
         padding: 2rem;
         color: #9ca3af;
     }
+    
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 2rem;
+    }
+    
+    .page-btn, .page-num {
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+    }
+    
+    .page-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .page-num.active {
+        background: rgba(79, 70, 229, 0.5);
+        border-color: rgba(79, 70, 229, 0.8);
+    }
 
     @media (max-width: 768px) {
         .profile-container {
@@ -362,6 +630,30 @@
 
         .stats-grid {
             grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .scores-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .filters {
+            width: 100%;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .game-filter {
+            width: 100%;
+        }
+        
+        .game-filter select {
+            width: 100%;
+        }
+        
+        .sort-controls {
+            width: 100%;
+            justify-content: space-between;
         }
     }
 </style>
