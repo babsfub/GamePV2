@@ -37,7 +37,7 @@
     let totalPages = $derived(Math.ceil(playerScores.length / pageSize));
     
     // Filtres
-    let selectedGameFilter = $state<GameId | 'all'>('all');
+    let selectedGameFilter = $state<GameId | 'all'>('all'); // Forcer 'all' comme valeur par défaut
     let sortBy = $state<'date' | 'score' | 'stake'>('date');
     let sortDirection = $state<'asc' | 'desc'>('desc');
     
@@ -47,54 +47,51 @@
     // États dérivés
     let isConnected = $derived(Boolean(walletState.address));
     let filteredScores = $derived(() => {
-        // Ajout de logs pour déboguer
-        console.log("Filtrage des scores:", {
-            playerScores,
-            selectedGameFilter,
-            sortBy, 
-            sortDirection
+        // Débogage approfondi
+        console.log("Filtrage - valeurs exactes:", {
+            selectedGameFilter: selectedGameFilter,
+            typeOfFilter: typeof selectedGameFilter
         });
         
-        // Vérifier chaque score individuellement pour trouver le problème
-        playerScores.forEach((score, index) => {
-            const matches = selectedGameFilter === 'all' || score.game === selectedGameFilter;
-            console.log(`Score ${index}:`, {
-                game: score.game,
-                selectedFilter: selectedGameFilter,
-                matches
+        if (playerScores.length > 0) {
+            console.log("Premier score - propriété game:", {
+                game: playerScores[0].game,
+                typeOfGame: typeof playerScores[0].game,
+                jsonStringified: JSON.stringify(playerScores[0])
             });
-        });
+        }
         
-        // Filtrer par jeu avec vérification supplémentaire
-        let scores = playerScores.filter(score => {
-            // S'assurer que game est bien défini avant comparaison
-            return selectedGameFilter === 'all' || 
-                   (score.game && score.game === selectedGameFilter);
-        });
+        // Filtrage simplifié SANS condition sur game pour le moment
+        let scores = [...playerScores];
         
-        console.log("Après filtrage:", scores);
+        // Si le filtre n'est pas 'all', alors on filtre
+        if (selectedGameFilter !== 'all') {
+            scores = scores.filter(score => {
+                const gameMatches = String(score.game) === String(selectedGameFilter);
+                console.log(`Score game="${score.game}" vs filter="${selectedGameFilter}" => ${gameMatches}`);
+                return gameMatches;
+            });
+        }
         
-        // Trier les scores avec vérification des valeurs
+        console.log("Scores après filtrage:", scores.length);
+        
+        // Tri simplifié et plus robuste
         if (scores.length > 0) {
-            scores = [...scores].sort((a, b) => {
+            scores.sort((a, b) => {
                 if (sortBy === 'date') {
-                    // Vérifier que blockNumber existe
-                    if (!a.blockNumber || !b.blockNumber) return 0;
-                    return sortDirection === 'desc' 
-                        ? Number(b.blockNumber - a.blockNumber)
-                        : Number(a.blockNumber - b.blockNumber);
-                } else if (sortBy === 'score') {
-                    // Vérifier que score existe
-                    if (!a.score || !b.score) return 0;
-                    return sortDirection === 'desc' 
-                        ? Number(b.score - a.score)
-                        : Number(a.score - b.score);
-                } else { // stake
-                    // Vérifier que stake existe
-                    if (!a.stake || !b.stake) return 0;
-                    return sortDirection === 'desc' 
-                        ? Number(b.stake - a.stake)
-                        : Number(a.stake - b.stake);
+                    const aVal = a.blockNumber ? Number(a.blockNumber) : 0;
+                    const bVal = b.blockNumber ? Number(b.blockNumber) : 0;
+                    return sortDirection === 'desc' ? bVal - aVal : aVal - bVal;
+                } 
+                else if (sortBy === 'score') {
+                    const aVal = a.score ? Number(a.score) : 0;
+                    const bVal = b.score ? Number(b.score) : 0;
+                    return sortDirection === 'desc' ? bVal - aVal : aVal - bVal;
+                } 
+                else { // stake
+                    const aVal = a.stake ? Number(a.stake) : 0;
+                    const bVal = b.stake ? Number(b.stake) : 0;
+                    return sortDirection === 'desc' ? bVal - aVal : aVal - bVal;
                 }
             });
         }
