@@ -380,17 +380,9 @@
             {:else if playerScores.length === 0}
                 <div class="empty-state">No scores found</div>
             {:else}
-                <!-- Affichage de débogage -->
-                <div class="debug-info">
-                    <p>Scores trouvés: {playerScores.length}</p>
-                    <p>Scores filtrés: {filteredScores.length}</p>
-                    <p>Scores paginés: {paginatedScores.length}</p>
-                    <p>Page actuelle: {currentPage}/{totalPages}</p>
-                </div>
-                
-                <!-- Affichage de tous les scores sans filtrage pour débogage -->
                 <div class="scores-grid">
-                    {#each playerScores as score, index}
+                    <!-- Afficher directement tous les scores sans filtrage -->
+                    {#each playerScores as score}
                         <div class="score-card">
                             <div class="game-info">
                                 <span class="game-name">{score.game}</span>
