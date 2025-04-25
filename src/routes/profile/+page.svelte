@@ -47,27 +47,57 @@
     // États dérivés
     let isConnected = $derived(Boolean(walletState.address));
     let filteredScores = $derived(() => {
-        // Filtrer par jeu
-        let scores = playerScores.filter(score => 
-            selectedGameFilter === 'all' || score.game === selectedGameFilter
-        );
-        
-        // Trier les scores
-        scores = [...scores].sort((a, b) => {
-            if (sortBy === 'date') {
-                return sortDirection === 'desc' 
-                    ? Number(b.blockNumber - a.blockNumber)
-                    : Number(a.blockNumber - b.blockNumber);
-            } else if (sortBy === 'score') {
-                return sortDirection === 'desc' 
-                    ? Number(b.score - a.score)
-                    : Number(a.score - b.score);
-            } else { // stake
-                return sortDirection === 'desc' 
-                    ? Number(b.stake - a.stake)
-                    : Number(a.stake - b.stake);
-            }
+        // Ajout de logs pour déboguer
+        console.log("Filtrage des scores:", {
+            playerScores,
+            selectedGameFilter,
+            sortBy, 
+            sortDirection
         });
+        
+        // Vérifier chaque score individuellement pour trouver le problème
+        playerScores.forEach((score, index) => {
+            const matches = selectedGameFilter === 'all' || score.game === selectedGameFilter;
+            console.log(`Score ${index}:`, {
+                game: score.game,
+                selectedFilter: selectedGameFilter,
+                matches
+            });
+        });
+        
+        // Filtrer par jeu avec vérification supplémentaire
+        let scores = playerScores.filter(score => {
+            // S'assurer que game est bien défini avant comparaison
+            return selectedGameFilter === 'all' || 
+                   (score.game && score.game === selectedGameFilter);
+        });
+        
+        console.log("Après filtrage:", scores);
+        
+        // Trier les scores avec vérification des valeurs
+        if (scores.length > 0) {
+            scores = [...scores].sort((a, b) => {
+                if (sortBy === 'date') {
+                    // Vérifier que blockNumber existe
+                    if (!a.blockNumber || !b.blockNumber) return 0;
+                    return sortDirection === 'desc' 
+                        ? Number(b.blockNumber - a.blockNumber)
+                        : Number(a.blockNumber - b.blockNumber);
+                } else if (sortBy === 'score') {
+                    // Vérifier que score existe
+                    if (!a.score || !b.score) return 0;
+                    return sortDirection === 'desc' 
+                        ? Number(b.score - a.score)
+                        : Number(a.score - b.score);
+                } else { // stake
+                    // Vérifier que stake existe
+                    if (!a.stake || !b.stake) return 0;
+                    return sortDirection === 'desc' 
+                        ? Number(b.stake - a.stake)
+                        : Number(a.stake - b.stake);
+                }
+            });
+        }
         
         return scores;
     });
