@@ -111,70 +111,81 @@
             error = null;
             const allScores: (Score & { game: GameId; roundId: bigint })[] = [];
             
-            // Fonction optimisée pour obtenir les scores d'un jeu
-            async function getGameScores(game: GameId) {
+            // Approche simplifiée pour charger les scores (comme le leaderboard)
+            console.log("Loading player scores with address:", walletState.address);
+            
+            for (const game of gamesList) {
                 try {
+                    console.log(`Loading scores for game: ${game}`);
                     const gameConfig = await readContract.getGameConfig(game);
                     
                     if (!gameConfig.active) {
                         console.log(`Game ${game} is not active, skipping...`);
-                        return [];
+                        continue;
                     }
-
+                    
                     const currentRoundId = gameConfig.currentRound;
-                    const gameScores: (Score & { game: GameId; roundId: bigint })[] = [];
+                    console.log(`Game ${game} current round ID: ${currentRoundId.toString()}`);
                     
-                    // Limiter à 5 rounds maximum pour éviter trop de requêtes
-                    const startRound = currentRoundId;
-                    const endRound = currentRoundId > 5n ? currentRoundId - 5n : 1n;
+                    const roundData = await readContract.getRoundData(currentRoundId, game);
+                    console.log(`Round data loaded for ${game}:`, {
+                        scoreCount: roundData.scores.length,
+                        prizePool: roundData.prizePool.toString(),
+                        isActive: roundData.isActive
+                    });
                     
-                    for (let roundId = startRound; roundId >= endRound; roundId--) {
+                    // Filtrer les scores du joueur
+                    const normalizedUserAddress = walletState.address.toLowerCase();
+                    const playerRoundScores = roundData.scores
+                        .filter(score => {
+                            const scorePlayerAddress = score.player.toLowerCase();
+                            const isMatch = scorePlayerAddress === normalizedUserAddress;
+                            console.log(`Score check - Player: ${scorePlayerAddress.substring(0, 8)}... vs User: ${normalizedUserAddress.substring(0, 8)}... - Match: ${isMatch}`);
+                            return isMatch;
+                        })
+                        .map(score => ({
+                            ...score,
+                            game,
+                            roundId: currentRoundId
+                        }));
+                    
+                    console.log(`Found ${playerRoundScores.length} scores for player in game ${game}`);
+                    allScores.push(...playerRoundScores);
+                    
+                    // Si nécessaire, regarder aussi dans le round précédent
+                    if (currentRoundId > 1n) {
                         try {
-                            const roundData = await readContract.getRoundData(roundId, game);
+                            const previousRoundId = currentRoundId - 1n;
+                            const previousRoundData = await readContract.getRoundData(previousRoundId, game);
                             
-                            if (!roundData.scores || roundData.scores.length === 0) {
-                                continue;
-                            }
-                            
-                            const playerRoundScores = roundData.scores
-                                .filter(score => score.player.toLowerCase() === walletState.address!.toLowerCase())
+                            const previousRoundScores = previousRoundData.scores
+                                .filter(score => score.player.toLowerCase() === normalizedUserAddress)
                                 .map(score => ({
                                     ...score,
                                     game,
-                                    roundId
+                                    roundId: previousRoundId
                                 }));
                             
-                            if (playerRoundScores.length > 0) {
-                                gameScores.push(...playerRoundScores);
-                            }
-                        } catch (roundError) {
-                            console.log(`Skipping round ${roundId} for ${game}`);
+                            console.log(`Found ${previousRoundScores.length} additional scores in previous round`);
+                            allScores.push(...previousRoundScores);
+                        } catch (err) {
+                            console.log(`Error loading previous round for ${game}:`, err);
                         }
                     }
-                    
-                    return gameScores;
-                } catch (gameError) {
-                    console.log(`Error loading game ${game}`);
-                    return [];
+                } catch (err) {
+                    console.error(`Error loading ${game} data:`, err);
                 }
             }
             
-            // Charger les scores de tous les jeux en parallèle
-            const gameScoresPromises = gamesList.map(game => getGameScores(game));
-            const allGameScores = await Promise.all(gameScoresPromises);
-            
-            // Combiner tous les scores
-            allGameScores.forEach(scores => {
-                allScores.push(...scores);
-            });
-            
             // Mise à jour des scores et stats
-            playerScores = allScores.sort((a, b) => Number(b.roundId - a.roundId));
+            console.log("All player scores loaded:", allScores);
+            playerScores = allScores;
             updateStats();
             
             // Récupérer les retraits en attente
             if (walletState.address) {
                 pendingWithdrawals = await readContract.getPendingWithdrawals(walletState.address);
+                console.log(`Pending withdrawals: ${formatEther(pendingWithdrawals)} ETH`);
             }
             
         } catch (error) {
