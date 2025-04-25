@@ -25,6 +25,16 @@ export interface ContractScore {
   verifier: Address
 }
 
+export interface Scores {
+  player: Address
+  score: bigint
+  blockNumber: bigint
+  verified: boolean
+  stake: bigint
+  scoreHash: `0x${string}`
+  verifier: Address
+}
+
 export interface ContractRoundBasicInfo {
   startTime: bigint
   endTime: bigint
@@ -62,10 +72,13 @@ export interface GameConfig {
   platformFee: number         // uint8
   verifierFee: number         // uint8
   maxScorePerGame: bigint     // uint64
+  maxScoresPerPlayer: number  // uint16 - NOUVEAU
   active: boolean             // bool
   saltKey: `0x${string}`      // bytes32
   currentRound: bigint        // uint256
   lastRoundStartTime: bigint  // uint64
+  allowUnverifiedScores: boolean  // bool - NOUVEAU
+  minDistributionDelay: bigint    // uint64 - NOUVEAU
   rewardDistribution: RewardDistribution
 }
 
@@ -102,6 +115,13 @@ export interface VerifierStats {
   actions: bigint[]
   rewards: bigint[]
   isActive: boolean
+}
+
+// Interface pour la réponse de getVerificationData
+export interface VerifierDataView {
+  verifiers: Address[]
+  actions: bigint[]
+  rewards: bigint[]
 }
 
 export interface ValidationMetadata {
@@ -165,6 +185,35 @@ export interface ValidationState {
   }
 }
 
+// Types pour les retours du contrat
+export interface ContractReturnTypes {
+  GameConfig: {
+    roundDuration: bigint
+    minStake: bigint
+    platformFee: number
+    verifierFee: number
+    maxScorePerGame: bigint
+    maxScoresPerPlayer: number  // NOUVEAU
+    active: boolean
+    saltKey: `0x${string}`
+    currentRound: bigint
+    lastRoundStartTime: bigint
+    maxWinners: number
+    platformFeePercent: number
+    winnerPercentages: readonly number[]
+    allowUnverifiedScores: boolean  // NOUVEAU
+    minDistributionDelay: bigint    // NOUVEAU
+  }
+  RoundView: {
+    basic: ContractRoundBasicInfo
+    scores: ContractScore[]
+    winners: Winner[]
+    verifiers: Address[]
+    prizePool: bigint
+    isActive: boolean
+  }
+}
+
 // Game Engine Interface
 export interface GameEngine {
   verify_score: (
@@ -212,7 +261,7 @@ interface TetrisPiece {
   y: number
 }
 
-// Dans types.ts, ajoutons les types pour Minesweeper
+// Types pour Minesweeper
 export interface MinesweeperState {
   board: Cell[][];
   score: bigint;
@@ -279,6 +328,30 @@ export interface BaseGameEngine {
     block_number: bigint,
     salt_key: string
   ) => boolean;
+}
+
+// Paramètres pour les nouvelles fonctions du contrat
+export interface SetUnverifiedScoresParams {
+  game: string
+  allowUnverifiedScores: boolean
+  account: Address
+}
+
+export interface SetDistributionDelayParams {
+  game: string
+  minDistributionDelay: bigint
+  account: Address
+}
+
+export interface UpdateSaltKeyParams {
+  game: string
+  newSaltKey: `0x${string}`
+  account: Address
+}
+
+export interface VerifierParams {
+  verifier: Address
+  account: Address
 }
 
 // App Types

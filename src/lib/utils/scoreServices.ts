@@ -24,7 +24,7 @@ export class ScoreService {
   }
 
   static async submitScore({
-    gameId,
+    gameId,  // Paramètre crucial réintroduit
     gameState,
     playerAddress,
     score,
@@ -35,9 +35,11 @@ export class ScoreService {
     contractHash,
     roundId,
     transactionBlockNumber,
-    transactionTimestamp
+    transactionTimestamp,
+    maxScoresPerPlayer,
+    allowUnverifiedScores
   }: {
-    gameId: GameId,
+    gameId: GameId,  // Type fortement typé
     gameState: any,
     playerAddress: Address,
     score: bigint,
@@ -48,11 +50,13 @@ export class ScoreService {
     contractHash?: Hash,
     roundId: bigint,
     transactionBlockNumber?: bigint,
-    transactionTimestamp?: Date
+    transactionTimestamp?: Date,
+    maxScoresPerPlayer?: number,
+    allowUnverifiedScores?: boolean
   }) {
     // Créer un objet avec les BigInt convertis en string
     const data: { [key: string]: any } = {
-      gameId,
+      gameId,  // Inclus dans les données envoyées
       gameState: this.convertBigIntToString(gameState), // Conversion récursive
       playerAddress,
       score: score.toString(),
@@ -63,7 +67,9 @@ export class ScoreService {
       contractHash,
       roundId: roundId.toString(),
       transactionBlockNumber: transactionBlockNumber?.toString(),
-      transactionTimestamp: transactionTimestamp?.toISOString()
+      transactionTimestamp: transactionTimestamp?.toISOString(),
+      maxScoresPerPlayer,
+      allowUnverifiedScores
     };
 
     // Nettoyage des undefined
@@ -73,7 +79,7 @@ export class ScoreService {
       }
     });
 
-    console.log('Prepared data for submission:', data); // Ajout d'un log pour debug
+    console.log('Prepared data for submission:', data);
 
     const response = await fetch('/api/games', {
       method: 'POST',
@@ -172,5 +178,31 @@ export class ScoreService {
     }
 
     return response.json();
+  }
+  
+  // Vous pourriez ajouter de nouvelles méthodes pour les fonctionnalités supplémentaires
+  static async getVerificationData(gameId: GameId, roundId: string): Promise<any> {
+    try {
+      const params = new URLSearchParams({
+        gameId,
+        roundId
+      });
+      
+      const response = await fetch(`/api/games/verification?${params.toString()}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API Error:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText
+        });
+        throw new Error('Network response was not ok');
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error("Error fetching verification data:", error);
+      throw error;
+    }
   }
 }

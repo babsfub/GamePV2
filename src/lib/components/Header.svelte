@@ -1,10 +1,8 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { getGameState } from '$lib/state/game.svelte.js';
   import { getUIState } from '$lib/state/ui.svelte.js';
   import { browser } from '$app/environment';
   import Connect from './wallet/Connect.svelte';
-  import type { GameId } from '$lib/types.js';
   import { GAMES } from '$lib/config/games.js';
 
   // Props avec la nouvelle syntaxe Runes

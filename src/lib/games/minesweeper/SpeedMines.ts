@@ -1,6 +1,6 @@
 // lib/games/minesweeper/SpeedMines.ts
 import { Application, Container, Graphics, Text } from 'pixi.js';
-import { MinesweeperEngine } from '$lib/games/minesweeper/pkg/minesweeper.js';
+import { MinesweeperEngine } from './pkg/minesweeper.js';
 import type { MinesweeperState, Cell } from '$lib/types.js';
 
 export class SpeedMines {
@@ -218,6 +218,4 @@ export class SpeedMines {
   }
 }
 
-
-export { MinesweeperEngine };
 

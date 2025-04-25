@@ -15,7 +15,7 @@ export const GAMES = {
     ],
     path: '/games/snake',
     maxScore: 1000000,
-    imageUrl: '/screenshots/snake.png',
+    imageUrl: '/images/games/snake.png',
     minStake: '0.01',
     gradient: 'from-emerald-400 to-cyan-500',
     difficulty: 'Beginner-Friendly'

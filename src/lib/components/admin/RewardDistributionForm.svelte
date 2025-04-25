@@ -4,7 +4,7 @@
   import { contractActions } from '$lib/contracts/actions.js'
   import { CONTRACT_CONFIG, contractEvents } from '$lib/config/contract.js'
   import type { Address } from 'viem'
-  import type { Game } from '$lib/types/games.js'
+  import type { GameId } from '$lib/types.js'
 
   // Props
   let { account } = $props<{ account: Address }>()
@@ -17,7 +17,7 @@
   }
 
   // États du formulaire
-  let selectedGame: keyof typeof CONTRACT_CONFIG.rewardDistribution.defaultPercentages = $state<'snake' | 'tetris'>('snake')
+  let selectedGame: GameId = $state<GameId>('snake')
   let maxWinners = $state(CONTRACT_CONFIG.rewardDistribution.maxWinners.toString())
   let platformFeePercent = $state(CONTRACT_CONFIG.rewardDistribution.platformFeePercent.toString())
   let winnerDistributions = $state<WinnerDistribution[]>(
@@ -91,29 +91,37 @@
   function validateInputs(): boolean {
     error = null
 
-    if (Number(maxWinners) <= 0 || Number(maxWinners) > 10) {
-      error = 'Number of winners must be between 1 and 10'
+    // Validation du nombre de gagnants (uint8)
+    const maxWinnersNum = Number(maxWinners)
+    if (maxWinnersNum <= 0 || maxWinnersNum > 255) {
+      error = 'Number of winners must be between 1 and 255'
       return false
     }
 
-    if (Number(platformFeePercent) < 0 || Number(platformFeePercent) > 100) {
-      error = 'Platform fee must be between 0 and 100'
+    // Validation du pourcentage de frais (uint8)
+    const platformFeePercentNum = Number(platformFeePercent)
+    if (platformFeePercentNum < 0 || platformFeePercentNum > 255) {
+      error = 'Platform fee must be between 0 and 255'
       return false
     }
 
+    // Validation des pourcentages de gagnants
     const percentages = winnerDistributions.map(d => Number(d.percentage))
     
-    if (percentages.some(p => p < 0 || p > 100)) {
-      error = 'All percentages must be between 0 and 100'
+    // Vérifier que tous les pourcentages sont des uint8 valides
+    if (percentages.some(p => p < 0 || p > 255)) {
+      error = 'All percentages must be between 0 and 255'
       return false
     }
 
+    // Vérifier que la somme ne dépasse pas 100%
     const totalPercentage = percentages.reduce((a, b) => a + b, 0)
     if (totalPercentage > 100) {
       error = 'Total rewards distribution cannot exceed 100%'
       return false
     }
 
+    // Vérifier que les rangs sont consécutifs
     const ranks = winnerDistributions.map(d => d.rank)
     const expectedRanks = Array.from({length: ranks.length}, (_, i) => i + 1)
     if (!ranks.every((r, i) => r === expectedRanks[i])) {
@@ -135,7 +143,7 @@
       if (!validateInputs()) return
 
       const hash = await contractActions.write.setRewardDistribution({
-        game: selectedGame as string,
+        game: selectedGame,
         maxWinners: Number(maxWinners),
         platformFeePercent: Number(platformFeePercent),
         winnerPercentages: winnerDistributions.map(d => Number(d.percentage)),
@@ -154,7 +162,7 @@
   // Mise à jour des gagnants
   function updateMaxWinners(newValue: string) {
     const num = Number(newValue)
-    if (num > 0 && num <= 10) {
+    if (num > 0 && num <= 255) {
       maxWinners = newValue
       winnerDistributions = Array(num).fill(null).map((_, index) => ({
         rank: index + 1,
@@ -165,8 +173,8 @@
   }
 
   // Changement de jeu
-  function selectGame(game: Game) {
-    selectedGame = game as 'snake' | 'tetris'
+  function selectGame(game: GameId) {
+    selectedGame = game
     loadDistributionConfig()
   }
 </script>
@@ -189,7 +197,7 @@
       <select
         id="game"
         bind:value={selectedGame}
-        onchange={(e) => selectGame(e.currentTarget.value as Game)}
+        onchange={(e) => selectGame(e.currentTarget.value as GameId)}
         disabled={loading}
       >
         <option value="snake">Snake</option>
@@ -205,11 +213,11 @@
         value={maxWinners}
         onchange={(e) => updateMaxWinners(e.currentTarget.value)}
         min="1"
-        max="10"
+        max="255"
         required
         disabled={loading}
       />
-      <small>Number of winners to reward (1-10)</small>
+      <small>Number of winners to reward (1-255)</small>
     </div>
 
     <div class="form-group">
@@ -219,7 +227,7 @@
         id="platformFee"
         bind:value={platformFeePercent}
         min="0"
-        max="100"
+        max="255"
         required
         disabled={loading}
       />
@@ -239,7 +247,7 @@
               type="number"
               bind:value={distribution.percentage}
               min="0"
-              max="100"
+              max="255"
               required
               disabled={loading}
             />
@@ -257,8 +265,6 @@
     {loading ? 'Updating...' : 'Update Distribution'}
   </button>
 </form>
-
-
 
 <style>
   .config-form {
@@ -331,90 +337,72 @@
     color: rgb(156, 163, 175);
   }
 
+  .alert {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
 
-    .config-form {
-      background-color: rgb(31 41 55);
-      border-radius: 1rem;
-      padding: 1.5rem;
-    }
-  
-    h2 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: white;
-      margin: 0 0 1.5rem;
-    }
-  
-    .alert {
-      padding: 1rem;
-      border-radius: 0.5rem;
-      margin-bottom: 1.5rem;
-    }
-  
-    .alert.error {
-      background: rgba(239, 68, 68, 0.1);
-      color: rgb(239, 68, 68);
-    }
-  
-    .alert.success {
-      background: rgba(5, 150, 105, 0.1);
-      color: rgb(34, 197, 94);
-    }
-  
-    .form-group {
-      margin-bottom: 1.5rem;
-    }
-  
-    label {
-      display: block;
-      color: rgb(156, 163, 175);
-      margin-bottom: 0.5rem;
-    }
-  
-    input {
-      width: 100%;
-      padding: 0.75rem;
-      background: rgb(55, 65, 81);
-      border: 1px solid rgb(75, 85, 101);
-      border-radius: 0.5rem;
-      color: white;
-    }
-  
-    input:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  
-  
-    .percentage-input {
-      position: relative;
-    }
-  
-    .percentage-input input {
-      padding-right: 2rem;
-    }
-  
-    .percentage-symbol {
-      position: absolute;
-      right: 0.75rem;
-      top: 50%;
-      transform: translateY(-50%);
-      color: rgb(156, 163, 175);
-    }
-  
-    .submit {
-      width: 100%;
-      padding: 0.75rem;
-      border: none;
-      border-radius: 0.5rem;
-      background: rgb(79, 70, 229);
-      color: white;
-      font-weight: 500;
-      cursor: pointer;
-    }
-  
-    .submit:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  </style>
+  .alert.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: rgb(239, 68, 68);
+  }
+
+  .alert.success {
+    background: rgba(5, 150, 105, 0.1);
+    color: rgb(34, 197, 94);
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  label {
+    display: block;
+    color: rgb(156, 163, 175);
+    margin-bottom: 0.5rem;
+  }
+
+  input, select {
+    width: 100%;
+    padding: 0.75rem;
+    background: rgb(55, 65, 81);
+    border: 1px solid rgb(75, 85, 101);
+    border-radius: 0.5rem;
+    color: white;
+  }
+
+  input:disabled, select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  small {
+    display: block;
+    margin-top: 0.25rem;
+    color: rgb(156, 163, 175);
+    font-size: 0.875rem;
+  }
+
+  .total {
+    text-align: right;
+    font-weight: 500;
+    margin-top: 0.5rem;
+  }
+
+  .submit {
+    width: 100%;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: rgb(79, 70, 229);
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+</style>

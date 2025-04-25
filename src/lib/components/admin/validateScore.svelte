@@ -1,6 +1,5 @@
 <!--/lib/components/admin/ValidateScore.svelte-->
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { getWalletState } from '$lib/state/wallet.svelte.js';
   import { getGameState } from '$lib/state/game.svelte.js';
   import { getUIState } from '$lib/state/ui.svelte.js';
@@ -118,24 +117,7 @@
     }
   }
 
-  async function enrichScoresWithDBData(contractScores: ContractScore[]): Promise<Score[]> {
-    const dbScores = await ScoreService.getScores(selectedGame);
-    
-    return contractScores.map(contractScore => {
-      const dbScore = dbScores.find((s: Score) => s.scoreHash === contractScore.scoreHash);
-      if (!dbScore?.transactionHash) {
-        throw new Error(`DB data not found for score ${contractScore.scoreHash}`);
-      }
-      return {
-        ...contractScore,
-        transactionHash: dbScore.transactionHash,
-        level: dbScore.level,
-        lines: dbScore.lines,
-        moves_count: dbScore.moves_count,
-        moves_hash: dbScore.moves_hash
-      };
-    });
-  }
+
 
   async function verifyGameHash(score: Score): Promise<VerificationDetail> {
     try {
@@ -200,7 +182,7 @@
     try {
       if (!gameEngine) throw new Error('Game engine not initialized');
       const gameData = await ScoreService.getScores(selectedGame, score.scoreHash);
-      const verificationResult = gameEngine.verify_game_data(gameData.game_state);
+      const verificationResult = gameEngine.verify_game_data(gameData[0]?.game_state);
 
       return {
         type: 'game_state',
@@ -356,7 +338,15 @@
       const { TetrisEngine } = await import('$lib/games/tetris/pkg/tetris_engine.js');
       if (selectedGame === 'tetris') {
         const engine = new TetrisEngine(10, 20);
-        gameEngine = engine;
+        gameEngine = {
+          verify_score: (scoreHash, player, blockNumber, saltKey) => {
+            const stored_hash = new Uint8Array(Buffer.from(scoreHash.slice(2), 'hex'));
+            return engine.verify_score(stored_hash, player, blockNumber, saltKey);
+          },
+          verify_game_data: (gameState) => {
+            return engine.verify_game_data(gameState);
+          }
+        };
       }
       await loadPendingScores();
       initialized = true;

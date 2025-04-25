@@ -1,4 +1,4 @@
-<!-- src/lib/components/admin/BatchOperations.svelte -->
+<!-- src/lib/components/admin/BatchActions.svelte -->
 <script lang="ts">
     import { getWalletState } from '$lib/state/wallet.svelte.js';
     import { getGameState } from '$lib/state/game.svelte.js';
